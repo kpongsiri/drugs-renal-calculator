@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Renal Drug Calculator — โรงพยาบาลสันทราย</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* ===== VARIABLES ===== */
+:root{
+  --bg:#0d1117; --s1:#161b22; --s2:#1c2230;
+  --b1:#2a3444; --b2:#344155;
+  --a1:#00d4aa; --a2:#0099cc;
+  --warn:#f0a500; --err:#e05252; --ok:#3fb950;
+  --t1:#e6edf3; --t2:#8b98a7; --t3:#5a6a7a;
+  --r:10px;
+}
+/* ===== RESET ===== */
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:'Sarabun',sans-serif;font-size:15px;background:var(--bg);color:var(--t1);padding:20px 14px 60px;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,170,.025)1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,.025)1px,transparent 1px);background-size:28px 28px;pointer-events:none;z-index:0;}
+.wrap{max-width:980px;margin:0 auto;position:relative;z-index:1;}
+
+/* ===== HEADER ===== */
+header{text-align:center;padding:26px 0 22px;border-bottom:1px solid var(--b1);margin-bottom:24px;}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--a1);background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.3);padding:3px 14px;border-radius:20px;margin-bottom:10px;}
+header h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+header h1 em{color:var(--a1);font-style:normal;}
+header p{font-size:12px;color:var(--t2);}
+
+/* ===== SEC LABEL ===== */
+.sec{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--a1);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.sec::after{content:'';flex:1;height:1px;background:var(--b1);}
+
+/* ===== CARD ===== */
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:18px;margin-bottom:16px;}
+
+/* ===== PATIENT GRID ===== */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;}
+.field label{display:block;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--t2);margin-bottom:5px;}
+.field input,.field select{
+  width:100%;background:var(--bg);border:1px solid var(--b2);border-radius:7px;
+  color:var(--t1);font-family:'Sarabun',sans-serif;font-size:14px;padding:8px 11px;
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+.field input:focus,.field select:focus{border-color:var(--a1);box-shadow:0 0 0 3px rgba(0,212,170,.1);}
+.field input[type=date]{color-scheme:dark;cursor:pointer;}
+.field select option{background:var(--s2);}
+
+/* ===== eGFR BOX ===== */
+.egfr-box{margin-top:16px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.eb-label{font-size:10px;color:var(--t2);font-weight:600;letter-spacing:.5px;margin-bottom:3px;}
+.eb-val{font-family:'IBM Plex Mono',monospace;font-size:30px;font-weight:600;line-height:1;color:var(--t3);transition:color .25s;}
+.eb-unit{font-size:11px;color:var(--t2);margin-left:4px;}
+.eb-stage{display:inline-block;padding:3px 12px;border-radius:16px;font-size:12px;font-weight:600;border:1px solid var(--b2);color:var(--t3);}
+.eb-formula{font-size:10px;color:var(--t3);font-family:'IBM Plex Mono',monospace;margin-top:3px;}
+.eb-div{width:1px;height:38px;background:var(--b1);flex-shrink:0;}
+
+/* ===== DRUG TABLE ===== */
+.dtbl{width:100%;border-collapse:collapse;}
+.dtbl th{
+  font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--t2);text-align:left;padding:8px 8px;background:var(--bg);
+  border-bottom:1px solid var(--b1);white-space:nowrap;
+}
+.dtbl td{padding:5px 4px;vertical-align:top;}
+.dtbl tr:not(:last-child) td{border-bottom:1px solid var(--b1);}
+.dnum{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--t3);width:24px;padding-top:11px;text-align:center;}
+
+/* ===== AUTOCOMPLETE ===== */
+.ac-wrap{position:relative;}
+.dinput{
+  width:100%;min-width:190px;background:var(--bg);border:1px solid var(--b2);border-radius:7px;
+  color:var(--t1);font-family:'Sarabun',sans-serif;font-size:14px;padding:7px 10px;
+  outline:none;transition:border-color .18s,box-shadow .18s;
+}
+.dinput:focus{border-color:var(--a2);box-shadow:0 0 0 3px rgba(0,153,204,.1);}
+.dinput::placeholder{color:var(--t3);}
+.ac-list{
+  position:absolute;top:calc(100%+3px);left:0;right:0;
+  background:var(--s2);border:1px solid var(--b2);border-radius:8px;
+  z-index:300;max-height:190px;overflow-y:auto;
+  box-shadow:0 8px 28px rgba(0,0,0,.5);display:none;
+}
+.ac-list.open{display:block;}
+.ac-item{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--b1);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.hi{background:rgba(0,212,170,.1);color:var(--a1);}
+.ac-grp{font-size:10px;color:var(--t3);margin-left:6px;}
+
+/* ===== DOSE CELLS ===== */
+.dc{font-size:12px;line-height:1.5;padding:6px 8px;border-radius:6px;}
+.dc-norm{background:rgba(63,185,80,.1);color:var(--ok);border:1px solid rgba(63,185,80,.22);}
+.dc-caut{background:rgba(240,165,0,.1);color:var(--warn);border:1px solid rgba(240,165,0,.22);}
+.dc-avd{background:rgba(224,82,82,.1);color:var(--err);border:1px solid rgba(224,82,82,.22);}
+.dc-nil{background:var(--s2);color:var(--t3);border:1px solid var(--b1);}
+
+/* ===== INFO BTN ===== */
+.ib{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:15px;height:15px;border-radius:50%;
+  background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.35);
+  color:var(--a1);font-size:9px;font-weight:700;
+  cursor:pointer;margin-left:4px;vertical-align:middle;
+  transition:background .15s;flex-shrink:0;
+}
+.ib:hover{background:rgba(0,212,170,.28);}
+
+/* ===== CALC BUTTON ===== */
+.bcalc{
+  width:100%;padding:14px;margin-top:8px;
+  background:linear-gradient(135deg,var(--a1),var(--a2));
+  color:#0d1117;font-family:'Sarabun',sans-serif;font-size:15px;font-weight:700;
+  border:none;border-radius:var(--r);cursor:pointer;
+  transition:opacity .18s,transform .1s;letter-spacing:.3px;
+}
+.bcalc:hover{opacity:.9;}
+.bcalc:active{transform:scale(.99);}
+
+/* ===== RESULT ===== */
+#res{display:none;animation:fi .35s ease;}
+#res.show{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:translateY(0);}}
+.rh{
+  background:var(--s2);border:1px solid var(--b1);
+  border-radius:var(--r) var(--r) 0 0;
+  padding:13px 16px;display:flex;align-items:flex-start;
+  justify-content:space-between;flex-wrap:wrap;gap:8px;
+  border-bottom:1px solid var(--b2);
+}
+.rh h3{font-size:13px;font-weight:700;}
+.rh p{font-size:11.5px;color:var(--t2);margin-top:2px;line-height:1.6;}
+.rtbl{width:100%;border-collapse:collapse;}
+.rtbl th{
+  font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  color:var(--t2);padding:9px 12px;text-align:left;
+  background:var(--s1);border-bottom:1px solid var(--b1);white-space:nowrap;
+}
+.rtbl td{padding:10px 12px;font-size:12.5px;border-bottom:1px solid var(--b1);vertical-align:top;line-height:1.6;}
+.rtbl tr:last-child td{border-bottom:none;}
+.rtbl tr:hover td{background:rgba(255,255,255,.015);}
+.badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600;}
+.b-ok{background:rgba(63,185,80,.14);color:var(--ok);}
+.b-ca{background:rgba(240,165,0,.14);color:var(--warn);}
+.b-av{background:rgba(224,82,82,.14);color:var(--err);}
+.dn{font-weight:600;}
+.nt{font-size:11px;color:var(--t2);margin-top:2px;}
+.bprint{
+  background:transparent;border:1px solid var(--b2);color:var(--t2);
+  padding:6px 14px;border-radius:7px;font-family:'Sarabun',sans-serif;
+  font-size:12px;cursor:pointer;transition:border-color .18s,color .18s;
+}
+.bprint:hover{border-color:var(--a1);color:var(--a1);}
+
+/* ===== MODAL ===== */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:999;align-items:center;justify-content:center;padding:14px;}
+.mo.show{display:flex;}
+.mb{
+  background:var(--s1);border:1px solid var(--b2);border-radius:14px;
+  max-width:550px;width:100%;max-height:88vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,.55);animation:fi .22s ease;
+}
+.mh{
+  padding:14px 16px 11px;border-bottom:1px solid var(--b1);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+  position:sticky;top:0;background:var(--s1);z-index:1;
+}
+.mh h3{font-size:14px;font-weight:700;color:var(--a1);}
+.mh p{font-size:11px;color:var(--t2);margin-top:2px;}
+.mx{background:none;border:none;color:var(--t2);font-size:19px;cursor:pointer;line-height:1;flex-shrink:0;}
+.mx:hover{color:var(--t1);}
+.mbody{padding:15px 16px 20px;}
+.ms{margin-bottom:15px;}
+.ms:last-child{margin-bottom:0;}
+.mst{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--a1);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--b1);}
+.mt{width:100%;border-collapse:collapse;font-size:12px;}
+.mt th{text-align:left;padding:5px 8px;background:var(--s2);color:var(--t2);font-size:10px;font-weight:700;}
+.mt td{padding:6px 8px;border-bottom:1px solid var(--b1);line-height:1.5;}
+.mt tr:last-child td{border-bottom:none;}
+.l-ok{color:var(--ok);font-weight:600;}
+.l-lo{color:var(--err);font-weight:600;}
+.l-hi{color:var(--warn);font-weight:600;}
+.mnote{background:rgba(240,165,0,.07);border:1px solid rgba(240,165,0,.22);border-radius:8px;padding:9px 13px;font-size:11.5px;color:#f0c040;line-height:1.7;margin-top:11px;}
+
+/* ===== DISCLAIMER ===== */
+.disc{font-size:10.5px;color:var(--t3);text-align:center;margin-top:22px;line-height:1.8;}
+
+/* ===== PRINT ===== */
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  body{background:#fff!important;color:#000!important;padding:8px!important;font-size:11pt;}
+  body::before{display:none!important;}
+  header{border-bottom:2px solid #000!important;padding:10px 0!important;margin-bottom:12px!important;}
+  header h1{font-size:16pt!important;color:#000!important;}
+  header h1 em{color:#007a63!important;}
+  .tag{background:#e0f7f3!important;border-color:#007a63!important;color:#007a63!important;}
+  .card{border:1px solid #ccc!important;background:#fff!important;padding:10px!important;margin-bottom:10px!important;}
+  .sec{color:#007a63!important;}
+  .sec::after{background:#ccc!important;}
+  .pgrid{grid-template-columns:repeat(4,1fr)!important;gap:8px!important;}
+  .field label{color:#555!important;}
+  .field input,.field select{
+    border:1px solid #ccc!important;background:#fff!important;
+    color:#000!important;padding:4px 8px!important;font-size:11pt!important;
+  }
+  .egfr-box{background:#f5fffe!important;border:1px solid #ccc!important;padding:10px 14px!important;}
+  .eb-val{font-size:20pt!important;}
+  .eb-stage{border:1px solid #ccc!important;}
+  .eb-formula{color:#555!important;}
+  .eb-div{background:#ccc!important;}
+  #drug-section{display:none!important;}
+  .bcalc{display:none!important;}
+  .disc{display:none!important;}
+  #res{display:block!important;}
+  .rh{background:#f5fffe!important;border:1px solid #ccc!important;padding:10px 12px!important;}
+  .rh h3{color:#000!important;font-size:12pt!important;}
+  .rh p{color:#333!important;font-size:10pt!important;}
+  .bprint{display:none!important;}
+  .rtbl{font-size:10pt!important;}
+  .rtbl th{background:#e8f4ff!important;color:#333!important;padding:6px 8px!important;border:1px solid #ccc!important;}
+  .rtbl td{padding:6px 8px!important;border:1px solid #ddd!important;}
+  .rtbl tr:hover td{background:none!important;}
+  .badge{font-size:9pt!important;}
+  .b-ok{background:#e2f7e9!important;color:#1a6b2e!important;}
+  .b-ca{background:#fff4e0!important;color:#8a5a00!important;}
+  .b-av{background:#fde8e8!important;color:#b31818!important;}
+  .dn{color:#000!important;}
+  .nt{color:#555!important;}
+  @page{size:A4 landscape;margin:12mm 10mm;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div class="tag">โรงพยาบาลสันทราย</div>
+  <h1>Renal Drug Dose <em>Calculator</em></h1>
+  <p>คำนวณ eGFR และแนะนำขนาดยาตามการทำงานของไต · ปี 2569</p>
+</header>
+
+<!-- PATIENT INFO -->
+<div class="sec">ข้อมูลผู้ป่วย</div>
+<div class="card">
+  <div class="pgrid">
+    <div class="field">
+      <label>วันที่ประเมิน</label>
+      <input type="date" id="pt-date">
+    </div>
+    <div class="field">
+      <label>ชื่อ-สกุล</label>
+      <input type="text" id="pt-name" placeholder=" ">
+    </div>
+    <div class="field">
+      <label>HN</label>
+      <input type="text" id="pt-hn" placeholder=" ">
+    </div>
+    <div class="field">
+      <label>อายุ (ปี)</label>
+      <input type="number" id="age" placeholder=" " min="1" max="120">
+    </div>
+    <div class="field">
+      <label>เพศ</label>
+      <select id="sex">
+        <option value="">— เลือก —</option>
+        <option value="male">ชาย</option>
+        <option value="female">หญิง</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>น้ำหนัก (kg)</label>
+      <input type="number" id="weight" placeholder=" " min="1" max="300">
+    </div>
+    <div class="field">
+      <label>Serum Creatinine (mg/dL)</label>
+      <input type="number" id="scr" placeholder=" " step="0.01" min="0.1">
+    </div>
+    <div class="field">
+      <label>วันที่เจาะ Creatinine</label>
+      <input type="date" id="pt-scrdate">
+    </div>
+  </div>
+
+  <!-- eGFR RESULT -->
+  <div class="egfr-box">
+    <div>
+      <div class="eb-label">eGFR (CKD-EPI 2021)</div>
+      <div style="display:flex;align-items:baseline;gap:5px">
+        <span class="eb-val" id="ev">—</span>
+        <span class="eb-unit">ml/min/1.73m²</span>
+      </div>
+      <div class="eb-formula" id="ef">กรอกอายุ เพศ น้ำหนัก Creatinine เพื่อคำนวณ</div>
+    </div>
+    <div class="eb-div"></div>
+    <div>
+      <div class="eb-label">CKD Stage</div>
+      <div class="eb-stage" id="es">—</div>
+    </div>
+    <div class="eb-div"></div>
+    <div>
+      <div class="eb-label">CrCl (Cockcroft-Gault)</div>
+      <div style="display:flex;align-items:baseline;gap:5px">
+        <span class="eb-val" id="cv" style="font-size:22px">—</span>
+        <span class="eb-unit">ml/min</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DRUG SECTION -->
+<div id="drug-section">
+  <div class="sec">รายการยา (สูงสุด 10 รายการ)</div>
+  <div class="card" style="padding:12px">
+    <table class="dtbl">
+      <thead>
+        <tr>
+          <th style="width:24px">#</th>
+          <th style="min-width:200px">ชื่อยา (พิมพ์เพื่อค้นหา)</th>
+          <th style="width:185px">โดส CrCl&lt;10 / HD</th>
+          <th style="width:165px">โดส CAPD</th>
+        </tr>
+      </thead>
+      <tbody id="drug-rows"></tbody>
+    </table>
+  </div>
+  <button class="bcalc" onclick="calcAll()">⚕ คำนวณและแนะนำขนาดยา</button>
+</div>
+
+<!-- RESULT -->
+<div id="res">
+  <div class="sec" style="margin-top:24px">ผลการประเมินขนาดยา</div>
+  <div style="border:1px solid var(--b1);border-radius:var(--r);overflow:hidden">
+    <div class="rh">
+      <div>
+        <h3 id="r-pt">—</h3>
+        <p id="r-eg">—</p>
+      </div>
+      <button class="bprint" onclick="window.print()">🖨 พิมพ์ (1 หน้า)</button>
+    </div>
+    <table class="rtbl">
+      <thead>
+        <tr>
+          <th style="width:24px">#</th>
+          <th style="min-width:140px">ชื่อยา</th>
+          <th style="width:80px">สถานะ</th>
+          <th>โดส CrCl&lt;10 / HD</th>
+          <th style="width:160px">โดส CAPD</th>
+          <th style="width:160px">หมายเหตุ</th>
+        </tr>
+      </thead>
+      <tbody id="res-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="disc">
+  ⚠️ ข้อมูลเป็นแนวทางเบื้องต้น ต้องพิจารณาร่วมกับอาการทางคลินิกและดุลยพินิจแพทย์<br>
+  อ้างอิง: Renal Drug Handbook · Micromedex · Drug Prescribing in Renal Failure (Aronoff 6th) · ASHP/IDSA 2020
+</div>
+</div>
+
+<!-- VANCOMYCIN MODAL -->
+<div class="mo" id="vmo" onclick="if(event.target===this)closeMo()">
+  <div class="mb">
+    <div class="mh">
+      <div><h3>Vancomycin — การติดตาม Trough Level</h3><p>Therapeutic Drug Monitoring (TDM)</p></div>
+      <button class="mx" onclick="closeMo()">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="ms">
+        <div class="mst">วิธีเจาะและเวลาที่เหมาะสม</div>
+        <p style="font-size:13px;line-height:1.8">
+          เจาะเลือดก่อนให้ยา <strong>dose ที่ 4 หรือ 5</strong> (นับรวม Loading dose)<br>
+          เจาะก่อนหยด IV ครั้งถัดไป <strong>30 นาที</strong> — ส่ง serum vancomycin trough level
+        </p>
+      </div>
+      <div class="ms">
+        <div class="mst">เป้าหมาย Trough Level</div>
+        <table class="mt">
+          <tr><th>ระดับ (mg/L)</th><th>การแปลผล</th><th>การจัดการ</th></tr>
+          <tr><td class="l-lo">&lt;10</td><td>ต่ำเกิน — รักษาไม่ได้ผล / เชื้อดื้อยา</td><td>เพิ่มขนาด หรือลด interval</td></tr>
+          <tr><td style="color:var(--warn);font-weight:600">10–14</td><td>ต่ำ — พิจารณาเพิ่มหากรุนแรง</td><td>เพิ่มขนาด 10–25%</td></tr>
+          <tr><td class="l-ok">15–20 ✓</td><td>Therapeutic range — เป้าหมาย</td><td>คงขนาดเดิม</td></tr>
+          <tr><td class="l-hi">21–25</td><td>สูง — เสี่ยง nephrotoxicity</td><td>ลดขนาด 10–25% หรือเพิ่ม interval</td></tr>
+          <tr><td class="l-hi">&gt;25</td><td>สูงมาก — เสี่ยง toxicity</td><td>หยุด 1–2 doses + เจาะซ้ำ + monitor Cr</td></tr>
+        </table>
+        <p style="font-size:11px;color:var(--t2);margin-top:6px">* CNS/IE/Osteomyelitis: เป้าหมาย 15–20 mg/L (บางแนวทางแนะนำ 20 mg/L)</p>
+      </div>
+      <div class="ms">
+        <div class="mst">ความถี่ติดตามตามระดับไต</div>
+        <table class="mt">
+          <tr><th>สถานการณ์</th><th>ความถี่</th></tr>
+          <tr><td>ไตปกติ (CrCl&gt;50)</td><td>ทุก 5–7 วัน</td></tr>
+          <tr><td>CKD / AKI</td><td>ทุก 2–3 วัน</td></tr>
+          <tr><td>Hemodialysis (HD)</td><td>ก่อน dose ถัดไปทุกครั้ง</td></tr>
+          <tr><td>CAPD</td><td>ทุก 5–7 วัน</td></tr>
+          <tr><td>หลังปรับขนาดยา</td><td>เจาะซ้ำหลังปรับ 2–3 doses</td></tr>
+        </table>
+      </div>
+      <div class="mnote">
+        <strong>⚠️ ข้อควรระวัง</strong><br>
+        • Infuse ช้า <strong>&gt;2 ชั่วโมง</strong> ทุกครั้ง — ป้องกัน Red-man syndrome<br>
+        • Monitor BUN/Cr ทุก 2–3 วัน ในผู้ป่วย CKD/AKI<br>
+        • Loading dose <strong>25–30 mg/kg</strong> ทุกราย ก่อนเริ่ม maintenance<br>
+        • ESRD ที่ได้ยา &gt;1 dose — ติดตาม trough ก่อนให้ยาทุกครั้ง<br>
+        • อ้างอิง: ASHP/IDSA/SIDP Vancomycin Monitoring Guidelines 2020
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DRUGS = [
+  // GI
+  { name:"Metoclopramide", group:"GI", normal:"10 mg q6-8h", mild:"10 mg q6-8h", mod:"5 mg q6-8h (ลด 50%)", severe:"5 mg q8-12h (ลด 75%)", note:"EPS เพิ่มในไตวาย", capd:"หลีกเลี่ยง / 5 mg q12h", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Omeprazole", group:"GI", normal:"20-40 mg/day", mild:"ปกติ", mod:"ปกติ (max 20mg/day)", severe:"ปกติ (max 20mg/day)", note:"ตับเผาผลาญ ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Pantoprazole", group:"GI", normal:"40 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Lansoprazole", group:"GI", normal:"30 mg/day", mild:"ปกติ", mod:"ปกติ max 30mg/day", severe:"ปกติ max 30mg/day", note:"", capd:"ปกติ max 30 mg/day", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Rabeprazole", group:"GI", normal:"20 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Domperidone", group:"GI", normal:"10 mg tid", mild:"ปกติ", mod:"5 mg tid (ลด 50%)", severe:"หลีกเลี่ยง / 5 mg tid", note:"ระวัง QT prolongation", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Sucralfate", group:"GI", normal:"1 g qid", mild:"ปกติ", mod:"ระวัง Al สะสม", severe:"หลีกเลี่ยง (Al สะสม)", note:"Al ดูดซึมได้บ้าง", capd:"หลีกเลี่ยง (Al สะสม)", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Ondansetron", group:"GI", normal:"8 mg q8-12h", mild:"ปกติ", mod:"ปกติ max 8 mg/dose", severe:"max 8 mg/วัน", note:"", capd:"max 8 mg/วัน", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Loperamide", group:"GI", normal:"2-4 mg prn", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  // CVS
+  { name:"Digoxin", group:"CVS", normal:"0.125-0.25 mg/day", mild:"0.125 mg/day (ลด 25-50%)", mod:"0.0625-0.125 mg/day q36-48h", severe:"0.0625 mg/day หรือ q48h", note:"Monitor level; TI แคบ — ระวัง toxicity", capd:"0.0625 mg/day — monitor level", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Furosemide", group:"CVS", normal:"40-80 mg/day", mild:"ปกติ — อาจเพิ่มขนาด", mod:"เพิ่มขนาด (ต้านทานยาเพิ่ม)", severe:"เพิ่มขนาดตามตอบสนอง", note:"ประสิทธิภาพลดใน CKD", capd:"เพิ่มขนาดตามตอบสนอง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Spironolactone", group:"CVS", normal:"25-100 mg/day", mild:"ปกติ", mod:"ระวัง K+ — ลดขนาด", severe:"หลีกเลี่ยง (Hyperkalemia)", note:"ระวัง hyperkalemia", capd:"หลีกเลี่ยง (Hyperkalemia)", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Atenolol", group:"CVS", normal:"50 mg/day", mild:"ปกติ", mod:"25 mg/day (ลด 50%)", severe:"25 mg q48h — and after H/D", note:"ขับทางไตเกือบทั้งหมด", capd:"25 mg q48h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Carvedilol", group:"CVS", normal:"6.25-25 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Amlodipine", group:"CVS", normal:"5-10 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Enalapril", group:"CVS", normal:"5-20 mg/day", mild:"2.5-5 mg/day (ลด 50-75%)", mod:"เริ่ม 2.5 mg/day (ลด 75%)", severe:"2.5 mg/day — and after H/D", note:"", capd:"2.5 mg/day", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Captopril", group:"CVS", normal:"25-75 mg bid-tid", mild:"ปกติ", mod:"12.5-25 mg bid (ลด 50%)", severe:"12.5 mg bid — and after H/D 25-50 mg", note:"", capd:"12.5 mg bid", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Losartan", group:"CVS", normal:"50-100 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — HD ไม่ถูกขับออก", note:"", capd:"ปกติ — ไม่ถูกขับออกทาง CAPD", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Warfarin", group:"CVS", normal:"ตาม INR target", mild:"ปกติ — monitor INR", mod:"ลดขนาด — monitor INR ใกล้ชิด", severe:"ลดขนาด — monitor INR ใกล้ชิด", note:"Protein binding ลด — sensitivity เพิ่ม", capd:"ลดขนาด — monitor INR ใกล้ชิด", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Apixaban", group:"CVS", normal:"5 mg bid", mild:"monitor bleeding", mod:"2.5 mg bid (ถ้า Cr≥1.5 + อายุ≥80 หรือ BW≤60)", severe:"หลีกเลี่ยง / ไม่แนะนำ — HD ไม่แนะนำ", note:"ปรับตาม 2 ใน 3 เกณฑ์", capd:"หลีกเลี่ยง / ข้อมูลจำกัด", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Clopidogrel", group:"CVS", normal:"75 mg/day", mild:"ปกติ", mod:"ปกติ — ระวัง", severe:"ระวัง — HD ระวัง", note:"", capd:"ระวัง — ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Aspirin", group:"CVS", normal:"81-300 mg/day", mild:"ปกติ", mod:"ระวัง fluid retention", severe:"หลีกเลี่ยง (CrCl<10) — HD ระวัง", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Atorvastatin", group:"CVS", normal:"10-80 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — HD ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Simvastatin", group:"CVS", normal:"10-40 mg/day", mild:"ปกติ", mod:"เริ่ม 5-10 mg/day ระวัง", severe:"เริ่ม 5-10 mg/day — HD เริ่มขนาดต่ำ", note:"Myopathy เพิ่มใน CKD", capd:"เริ่ม 5-10 mg/day", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Rosuvastatin", group:"CVS", normal:"10-40 mg/day", mild:"ปกติ", mod:"เริ่ม 5 mg/day (CrCl<30)", severe:"เริ่ม 5 mg/day — HD เริ่ม 5 mg/day", note:"ขับทางไต 28%", capd:"เริ่ม 5 mg/day", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Tranexamic acid", group:"CVS", normal:"250-500 mg tid", mild:"250 mg tid (CrCl 10-50: q12h)", mod:"250 mg bid (q24h)", severe:"250 mg q48h — and after H/D", note:"ขับทางไต — ปรับ interval", capd:"250 mg q24h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  // RESP
+  { name:"Salbutamol", group:"Resp", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Theophylline", group:"Resp", normal:"200-300 mg bid", mild:"ปกติ — monitor level", mod:"ปกติ — monitor level", severe:"ปกติ — monitor level, and after H/D", note:"Active metabolite สะสม", capd:"ปกติ — monitor level (ถูกขับออกบางส่วน)", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Montelukast", group:"Resp", normal:"10 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Cetirizine", group:"Resp", normal:"10 mg/day", mild:"5 mg/day (CrCl 30-50)", mod:"5 mg/day หรือ q48h", severe:"5 mg q48h — HD 5 mg q48h", note:"ขับทางไต 70%", capd:"5 mg q48h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Levocetirizine", group:"Resp", normal:"5 mg/day", mild:"2.5 mg/day (CrCl 30-50)", mod:"2.5 mg q48h (CrCl 10-30)", severe:"2.5 mg q72h — HD หลีกเลี่ยง", note:"ขับทางไต 85%", capd:"หลีกเลี่ยง / 2.5 mg q72h", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Loratadine", group:"Resp", normal:"10 mg/day", mild:"ปกติ", mod:"q48h (CrCl<30)", severe:"q48h — HD q48h", note:"", capd:"q48h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  // CNS
+  { name:"Diazepam", group:"CNS", normal:"2-10 mg", mild:"ปกติ", mod:"ลดขนาด 50%", severe:"ลดขนาด 50% — HD ปกติ (ไม่ถูกขับออก)", note:"Active metabolite สะสม — CNS depression", capd:"ลดขนาด 50% — ไม่ถูกขับออกทาง CAPD", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Lorazepam", group:"CNS", normal:"1-4 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด / ระวัง", note:"ปลอดภัยกว่า Diazepam ใน CKD", capd:"ลดขนาด / ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Phenobarbital", group:"CNS", normal:"60-180 mg/day", mild:"q8-12h", mod:"q8-12h (ลดขนาด)", severe:"q12-16h — and after H/D 50%", note:"ขับทางไต 25-50%", capd:"q12-16h — ถูกขับออกบางส่วนทาง CAPD", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Phenytoin", group:"CNS", normal:"300 mg/day ÷ bid-tid", mild:"ปกติ — monitor free level", mod:"ปกติ — monitor free level ใกล้ชิด", severe:"ระวัง — monitor free level, HD ไม่ถูกขับออก", note:"Protein binding ลด → free drug เพิ่ม", capd:"ระวัง — monitor free level", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Sodium valproate", group:"CNS", normal:"500-1500 mg/day", mild:"ปกติ — monitor", mod:"ปกติ — monitor free level", severe:"ระวัง — monitor free level, and after H/D", note:"Protein binding ลด — free drug เพิ่ม", capd:"ระวัง — monitor free level", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Levetiracetam", group:"CNS", normal:"500-1500 mg bid", mild:"500-1000 mg q12h (CrCl 30-50)", mod:"250-750 mg q12h (CrCl 10-30)", severe:"250-500 mg q12h — and after H/D 250-500 mg", note:"ขับทางไต 66% — ปรับสำคัญมาก", capd:"250-500 mg q12h and after H/D", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Gabapentin", group:"CNS", normal:"300-1200 mg tid", mild:"600-1800 mg/day (CrCl 30-59)", mod:"300-900 mg/day (CrCl 15-29)", severe:"150-300 mg/day — and after H/D 125-350 mg", note:"ขับทางไต 100% — ปรับสำคัญมาก", capd:"150-300 mg/day and after H/D", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Pregabalin", group:"CNS", normal:"150-600 mg/day ÷ bid", mild:"75-300 mg/day ÷ bid (CrCl 30-59)", mod:"25-150 mg/day ÷ daily-bid (CrCl 15-29)", severe:"25-75 mg/day — and after H/D 25-150 mg", note:"ขับทางไต 90% — ปรับสำคัญมาก", capd:"25-75 mg/day and after H/D", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Lithium carbonate", group:"CNS", normal:"300-900 mg/day ÷ bid-tid", mild:"ลดขนาด 25-50% — monitor level", mod:"ลดขนาด 50-75% — monitor level", severe:"หลีกเลี่ยง — and after H/D", note:"Narrow TI ขับทางไต 100% — ปรับสำคัญมาก", capd:"หลีกเลี่ยง — ถูกขับออกทาง CAPD and after H/D", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Amitriptyline", group:"CNS", normal:"25-150 mg/day", mild:"ปกติ", mod:"ลดขนาด 25-50%", severe:"ลดขนาด 50% / ระวัง", note:"Active metabolite สะสม", capd:"ลดขนาด 50% / ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Fluoxetine", group:"CNS", normal:"20-60 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Sertraline", group:"CNS", normal:"50-200 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"ตับเผาผลาญ", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Morphine", group:"CNS", normal:"10-30 mg q4h", mild:"q6-8h (75% dose)", mod:"q8-12h (50% dose)", severe:"หลีกเลี่ยง — HD หลีกเลี่ยง", note:"M6G active metabolite สะสม — respiratory depression", capd:"หลีกเลี่ยง — M6G สะสม", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Tramadol", group:"CNS", normal:"50-100 mg q4-6h", mild:"q6-8h (max 200 mg/day)", mod:"q12h (max 200 mg/day)", severe:"q12h max 200 mg/day — and after H/D", note:"Active metabolite สะสม", capd:"q12h max 200 mg/day", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Fentanyl", group:"CNS", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ลดขนาด 25-50% — monitor", severe:"ลดขนาด 50% — monitor, HD ระวัง", note:"", capd:"ลดขนาด 50% — monitor", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  // INFECT
+  { name:"Amoxicillin", group:"Infect", normal:"500 mg q8h", mild:"ปกติ", mod:"250-500 mg q12h (CrCl 10-30)", severe:"250-500 mg q24h — and after H/D", note:"", capd:"250 mg q12h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Amoxicillin-Clavulanate", group:"Infect", normal:"875/125 mg q12h", mild:"ปกติ", mod:"875/125 mg q12h (CrCl 10-30)", severe:"875/125 mg q24h — and after H/D", note:"ปรับตาม Amoxicillin", capd:"250/125 mg q12h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Cefazolin", group:"Infect", normal:"1 g q8h", mild:"1 g q12h (CrCl 35-54)", mod:"1 g q24h (CrCl 11-34)", severe:"q24-48h — and after H/D", note:"", capd:"500 mg q24h (LD 500 mg IP)", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Cephalexin", group:"Infect", normal:"500 mg q6h", mild:"ปกติ", mod:"500 mg q8-12h (CrCl 10-30)", severe:"250-500 mg q24h — and after H/D", note:"", capd:"250 mg q12h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Ceftriaxone", group:"Infect", normal:"1-2 g q24h", mild:"ปกติ", mod:"ปกติ (max 2 g/day)", severe:"ปกติ max 2 g/day — HD ปกติ max 2 g/day", note:"ขับทางน้ำดี 40-65%", capd:"ปกติ max 2 g/day", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Ceftazidime", group:"Infect", normal:"1-2 g q8h", mild:"1 g q12h (CrCl 31-50)", mod:"500 mg q12-24h (CrCl 16-30)", severe:"500 mg q24-48h — and after H/D 1 g", note:"ขับทางไต 80-90%", capd:"500 mg q24h (LD 250 mg IP)", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Meropenem", group:"Infect", normal:"1 g IV q8h (drip in 3 hr) | MDR/CNS: 2 g IV q8h (drip in 3 hr)", mild:"CrCl 26-50: 1 g q12h | MDR: 2 g q12h", mod:"CrCl 10-25: 500 mg q12h | MDR: 1 g q12h", severe:"CrCl<10: 500 mg q24h and after H/D | MDR: 1 g q24h and after H/D", note:"Extended infusion 3 hr เพิ่ม PK/PD | วัน HD: ให้หลัง HD", capd:"500 mg q24h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Imipenem-Cilastatin", group:"Infect", normal:"500 mg q6h", mild:"250-500 mg q8-12h (CrCl 21-40)", mod:"125-250 mg q6-12h (CrCl 6-20)", severe:"125-250 mg q6-12h — and after H/D 250 mg", note:"", capd:"125-250 mg q12h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Colistin (Colistimethate)", group:"Infect",
+    normal:"LD 300 mg IV ครั้งเดียว จากนั้น 150 mg IV q8-12h (CrCl>80)",
+    mild:"LD 300 mg IV จากนั้น 150 mg IV q12h (CrCl 41-80)",
+    mod:"LD 300 mg IV จากนั้น 100 mg IV q12h (CrCl 21-40) | CrCl≤20: 150 mg q24h",
+    severe:"LD 300 mg IV จากนั้น 150 mg IV q24h | HD: 200 mg and after H/D + Non-HD day: 150 mg q24h",
+    note:"LD 300 mg ทุกราย | Inhalation: 75 mg + NSS NB q12h",
+    capd:"LD 300 mg IV จากนั้น 100 mg IV q24h", capdSev:"caution",
+    severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Piperacillin/Tazobactam (Tazocin)", group:"Infect",
+    normal:"4.5 g IV q6h",
+    mild:"4.5 g IV q6h (CrCl>40)",
+    mod:"4.5 g IV q8h (CrCl 20-40) | CrCl<20: 4.5 g q12h",
+    severe:"4.5 g IV q12h (CrCl<20) | HD: 2.25 g q6h and after H/D 750 mg",
+    note:"เด็ก 2-12 ปี BW<40kg: 112.5 mg/kg q8h | CRRT: 2.25 g q6h",
+    capd:"2.25 g IV q6h", capdSev:"caution",
+    severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Fosfomycin IV", group:"Infect",
+    normal:"CRE/MDR/Meningitis: 4 g IV q8h | Osteomyelitis/MRSA: 4 g IV q12h | VRE/E.faecium: 2 g IV q12h",
+    mild:"CrCl 31-50: CRE/MDR: 2 g q8h | Osteo: 2 g q12h | VRE: 1 g q12h",
+    mod:"CrCl≤30: CRE/MDR: 1 g q8h | Osteo: 1 g q12h | VRE: 500 mg q12h",
+    severe:"CrCl≤30 (same) | HD: ขนาดเดิม and after H/D (CRE: +4 g | Osteo: +4 g | VRE: +2 g)",
+    note:"ใช้ร่วมกับยาอื่นเสมอ (combination) | CCVH: ไม่ต้องปรับขนาด",
+    capd:"ใช้ขนาด CrCl≤30 — ข้อมูลจำกัด", capdSev:"caution",
+    severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Vancomycin", group:"Infect", normal:"Loading 25-30 mg/kg IV ครั้งเดียว จากนั้น 15-20 mg/kg q8-12h (infuse >2 hr)", mild:"15 mg/kg IV q24-96h + ติดตาม trough level (CrCl 10-50)", mod:"15 mg/kg IV q24-96h + ติดตาม trough level (CrCl 10-50)", severe:"7.5 mg/kg IV q48-72h + ติดตาม trough level (CrCl<10)", note:"ติดตาม trough level เป้าหมาย 15-20 mg/L | Loading ทุกราย | infuse >2 hr ป้องกัน Red-man syndrome", capd:"7.5 mg/kg IV q48-72h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Gentamicin", group:"Infect", normal:"1-2 mg/kg q8h หรือ 4-7 mg/kg q24h", mild:"60-70% dose q12h (CrCl 30-50)", mod:"ลดขนาด q24-48h (CrCl 10-30)", severe:"Monitor levels — and after H/D 2 mg/kg", note:"Monitor peak/trough — nephrotoxic", capd:"LD 2 mg/kg จากนั้น monitor level q48-72h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Amikacin", group:"Infect", normal:"15-20 mg/kg q24h + ติดตาม trough level", mild:"7.5 mg/kg q24-48h (CrCl 30-50)", mod:"7.5 mg/kg q48-72h (CrCl 10-30)", severe:"Monitor levels — and after H/D", note:"Monitor peak/trough — nephrotoxic", capd:"LD 7.5 mg/kg จากนั้น monitor level", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Levofloxacin", group:"Infect", normal:"500 mg q24h", mild:"500 mg ครั้งแรก จากนั้น 250 mg q24h (CrCl 20-49)", mod:"500 mg ครั้งแรก จากนั้น 250 mg q24h (CrCl 10-19)", severe:"500 mg ครั้งแรก จากนั้น 250 mg q48h — and after H/D", note:"ขับทางไต 87%", capd:"250 mg q48h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Ciprofloxacin", group:"Infect", normal:"500 mg q12h", mild:"250-500 mg q12h", mod:"250-500 mg q18-24h (CrCl 10-30)", severe:"250-500 mg q24h — and after H/D", note:"", capd:"250-500 mg q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Co-trimoxazole", group:"Infect", normal:"ปกติ", mild:"ปกติ", mod:"ลดขนาด 50% (CrCl 15-30)", severe:"หลีกเลี่ยง (CrCl<15) — and after H/D", note:"Monitor Cr, K", capd:"TMP 2.5-5 mg/kg q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Metronidazole", group:"Infect", normal:"500 mg q8h", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด 50% — and after H/D, PD ปกติ", note:"Active metabolite สะสมใน CKD รุนแรง", capd:"ปกติ — ถูกขับออกบางส่วน", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Fluconazole", group:"Infect", normal:"200-400 mg/day", mild:"ปกติ", mod:"50% dose (CrCl<50)", severe:"50% dose — HD 100% dose หลังฟอก", note:"ขับทางไต 80%", capd:"50% dose q24-48h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Acyclovir", group:"Infect", normal:"400-800 mg 5x/day (oral)", mild:"ปกติ", mod:"200-400 mg q12h (oral, CrCl 10-25)", severe:"200 mg q12h — and after H/D 5 mg/kg q24h", note:"Crystalline nephropathy — hydration สำคัญ", capd:"200 mg q12h — hydration สำคัญ", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Oseltamivir", group:"Infect", normal:"75 mg bid x5 วัน", mild:"ปกติ", mod:"30 mg bid (CrCl 10-30)", severe:"30 mg qd — and after H/D, PD 30 mg qd", note:"", capd:"30 mg q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Rifampicin", group:"Infect",
+    normal:"600 mg/day (หรือ 10 mg/kg/day)",
+    mild:"ปกติ",
+    mod:"ปกติ",
+    severe:"ปกติ — HD ไม่ถูกขับออก",
+    note:"ตับเผาผลาญเป็นหลัก ไม่ต้องปรับขนาดตามไต",
+    capd:"ปกติ", capdSev:"normal",
+    severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Pyrazinamide", group:"Infect",
+    normal:"25-30 mg/kg/day (max 2 g/day)",
+    mild:"ปกติ",
+    mod:"ปกติ — ระวัง hyperuricemia",
+    severe:"q48-72h (ลดความถี่) — HD: and after H/D",
+    note:"ระวัง hyperuricemia ใน CKD | ขับทางไตบางส่วน",
+    capd:"25-30 mg/kg q48-72h", capdSev:"caution",
+    severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Isoniazid (INH)", group:"Infect", normal:"300 mg/day", mild:"ปกติ", mod:"ปกติ (slow acetylator: ระวัง)", severe:"ปกติ / ลด 50-67% — and after H/D", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ethambutol", group:"Infect", normal:"15-25 mg/kg q24h", mild:"q24-36h (CrCl 30-50)", mod:"q48h (CrCl 10-30)", severe:"q48h — and after H/D q48h", note:"Optic neuritis เพิ่มใน renal failure", capd:"q48h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  // ENDO / DM
+  { name:"Metformin", group:"Endo", normal:"500-2000 mg/day ÷ bid-tid", mild:"ปกติ (eGFR 30-45: ระวัง, <30: หยุด)", mod:"หยุด (eGFR<30)", severe:"ห้ามใช้ — HD ห้ามใช้", note:"Lactic acidosis — ห้ามใช้ eGFR<30", capd:"ห้ามใช้", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Glipizide", group:"Endo", normal:"5-20 mg/day", mild:"ปกติ", mod:"ระวัง hypoglycemia / ลดขนาด", severe:"หลีกเลี่ยง / ขนาดต่ำสุด", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Glimepiride", group:"Endo", normal:"1-4 mg/day", mild:"เริ่ม 1 mg/day", mod:"เริ่ม 1 mg/day — ระวัง hypoglycemia", severe:"หลีกเลี่ยง — HD หลีกเลี่ยง", note:"Active metabolite สะสม", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Sitagliptin", group:"Endo", normal:"100 mg/day", mild:"50 mg/day (CrCl 30-<50)", mod:"25 mg/day (CrCl<30)", severe:"25 mg/day — and after H/D 25 mg/day", note:"ขับทางไต 87%", capd:"25 mg/day", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Gemigliptin", group:"Endo", normal:"50 mg/day", mild:"ปกติ", mod:"ปกติ (CrCl<30: ปกติ)", severe:"ปกติ — HD ปกติ", note:"เหมาะกับ CKD ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Dapagliflozin", group:"Endo", normal:"10 mg/day", mild:"ปกติ (eGFR≥45)", mod:"หลีกเลี่ยง DM (eGFR<45); HF/CKD: ใช้ได้ eGFR>20", severe:"ห้ามใช้ DM — HF/CKD: ใช้ได้ eGFR≥20", note:"ประสิทธิภาพ DM ลด แต่ kidney/heart protection ยังมี", capd:"ห้ามใช้ (DM) — ข้อมูลจำกัด", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Insulin (RI/NPH/Glargine)", group:"Endo", normal:"ตามมาตรฐาน", mild:"ลดขนาด 25%", mod:"ลดขนาด 50%", severe:"ลดขนาด 75% — HD monitor ใกล้ชิด", note:"ไตขับ insulin — hypoglycemia เพิ่ม", capd:"ลดขนาด 50-75% — monitor ใกล้ชิด", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Levothyroxine", group:"Endo", normal:"50-100 mcg/day", mild:"ปกติ", mod:"ปกติ — monitor TSH", severe:"ปกติ — HD ปกติ monitor TSH", note:"", capd:"ปกติ — monitor TSH", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Prednisolone", group:"Endo", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Dexamethasone", group:"Endo", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  // MSK
+  { name:"Ibuprofen", group:"MSK", normal:"400-800 mg tid", mild:"ระวัง — monitor Cr", mod:"ระวัง / ลดขนาด", severe:"หลีกเลี่ยง — HD หลีกเลี่ยง", note:"NSAIDs ลด GFR และเพิ่ม K", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Diclofenac", group:"MSK", normal:"50-75 mg bid-tid", mild:"ระวัง — monitor Cr", mod:"ระวัง / ลดขนาด", severe:"หลีกเลี่ยง — HD หลีกเลี่ยง", note:"NSAIDs ลด GFR", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Naproxen", group:"MSK", normal:"250-500 mg bid", mild:"ระวัง", mod:"ระวัง / ลดขนาด", severe:"หลีกเลี่ยง — HD หลีกเลี่ยง", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Celecoxib", group:"MSK", normal:"200 mg bid", mild:"ปกติ — ระวัง Cr", mod:"ระวัง / ลดขนาด (CrCl 30-50)", severe:"หลีกเลี่ยง (CrCl<30)", note:"COX-2 ยังลด GFR ได้", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Allopurinol", group:"MSK", normal:"100-300 mg/day", mild:"100 mg/day (CrCl 20-50)", mod:"50-100 mg/day (CrCl 10-20)", severe:"50 mg q48-72h — and after H/D 100 mg", note:"ระวัง SJS/TEN — ปรับขนาดสำคัญ", capd:"50 mg q48-72h and after H/D", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Febuxostat", group:"MSK", normal:"80-120 mg/day", mild:"ปกติ", mod:"ปกติ (CrCl>30)", severe:"40 mg/day (CrCl<30)", note:"ทางเลือกที่ดีกว่า Allopurinol ใน CKD", capd:"40 mg/day — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Colchicine", group:"MSK", normal:"0.6 mg bid", mild:"0.6 mg bid — ระวัง", mod:"0.6 mg qd (CrCl 10-30)", severe:"0.6 mg qd — HD q48-72h", note:"Neuromuscular toxicity ใน CKD", capd:"0.6 mg qd — ระวัง neuromuscular toxicity", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Methotrexate (DMARDs)", group:"MSK", normal:"7.5-25 mg/week", mild:"ลดขนาด 50%", mod:"ลดขนาด 50-70%", severe:"หลีกเลี่ยง — HD หลีกเลี่ยง", note:"ขับทางไต 80-90% — toxic มากใน CKD", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  // NUTRITION
+  { name:"Calcium carbonate", group:"Nutr", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ (phosphate binder)", severe:"ปกติ — HD phosphate binder", note:"", capd:"ปกติ (phosphate binder)", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Vitamin C", group:"Nutr", normal:"ไม่เกิน 200 mg/day", mild:"ไม่เกิน 200 mg", mod:"จำกัด <60 mg/day (ระวัง oxalate)", severe:"ห้ามเกิน 60 mg/day — HD 60 mg/day", note:"Oxalate nephropathy", capd:"ห้ามเกิน 60 mg/day", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Potassium chloride", group:"Nutr", normal:"ตามมาตรฐาน", mild:"ระวัง — monitor K+", mod:"ระวัง — monitor K+ ใกล้ชิด", severe:"ระวังมาก hyperkalemia — HD ปรับตาม K level", note:"ระวัง hyperkalemia", capd:"ระวังมาก hyperkalemia — ปรับตาม K level", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },,
+  { name:"Mist. Carminative", group:"GI", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Simethicone", group:"GI", normal:"80 mg tid-qid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ไม่ดูดซึม ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Hyoscine-N-butylbromide", group:"GI", normal:"10-20 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ใช้ด้วยความระมัดระวัง", note:"ข้อมูลจำกัด", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Mebeverine", group:"GI", normal:"135 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ใช้ด้วยความระมัดระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Mosapride", group:"GI", normal:"5 mg tid", mild:"ปกติ", mod:"ลดขนาด 50%", severe:"หลีกเลี่ยง", note:"ระวัง Arrhythmia ใน CKD", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Bisacodyl", group:"GI", normal:"5-10 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Lactulose", group:"GI", normal:"15-30 mL tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง electrolyte", note:"ระวัง electrolyte imbalance", capd:"ระวัง electrolyte", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Senna", group:"GI", normal:"7.5-15 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Macrogol 4000", group:"GI", normal:"13.8 g/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง electrolyte", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Milk of Magnesia", group:"GI", normal:"30-60 mL prn", mild:"ปกติ", mod:"ระวัง Mg สะสม", severe:"หลีกเลี่ยง (Mg สะสม)", note:"Mg สะสมใน CKD — hypermagnesemia", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Aluminium hydroxide+Mg hydroxide", group:"GI", normal:"10-20 mL qid", mild:"ปกติ", mod:"ระวัง Al/Mg สะสม", severe:"หลีกเลี่ยง", note:"Al/Mg สะสมใน CKD", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Ispaghula husk", group:"GI", normal:"1 sachet bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Ursodeoxycholic acid", group:"GI", normal:"250 mg bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Pancreatin+Simethicone", group:"GI", normal:"1-2 tab tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Diosmine", group:"GI", normal:"500 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Silymarin", group:"GI", normal:"140 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"ข้อมูลจำกัด", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Octreotide", group:"GI", normal:"100-200 mcg q8h SC", mild:"ปกติ", mod:"ลดขนาด 50%", severe:"ลดขนาด 50%", note:"ขับทางไตบางส่วน", capd:"ลดขนาด 50%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Rebamipide", group:"GI", normal:"100 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"ข้อมูลจำกัด", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Sulfasalazine (GI)", group:"GI", normal:"500 mg qid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด ระวัง crystalluria", note:"ระวัง crystalluria, hemolysis — หลีกเลี่ยง", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Mesalazine", group:"GI", normal:"500 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด ระวัง", note:"หลีกเลี่ยง (nephrotoxic)", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Tolvaptan", group:"CVS", normal:"15 mg/day", mild:"ปกติ", mod:"ระวัง — ห้ามใช้ใน anuria", severe:"หลีกเลี่ยง / ห้ามใช้", note:"ห้ามใช้ใน anuria", capd:"ห้ามใช้", capdSev:"avoid", severity:{mild:"normal",mod:"avoid",severe:"avoid"} },
+  { name:"Amiodarone", group:"CVS", normal:"200 mg/day (maintenance)", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ — HD ไม่ถูกขับออก", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Flecainide", group:"CVS", normal:"100 mg bid", mild:"ลดขนาด 25-50% (CrCl<50)", mod:"ลดขนาด 50%", severe:"ลดขนาด 75% / หลีกเลี่ยง", note:"ขับทางไต 30%", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Bisoprolol", group:"CVS", normal:"2.5-10 mg/day", mild:"ปกติ", mod:"ปกติ — ระวัง", severe:"ระวัง / ลดขนาด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Propranolol", group:"CVS", normal:"10-40 mg bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง accumulate", note:"Active metabolite สะสมได้", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Labetalol", group:"CVS", normal:"100-400 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Hydralazine", group:"CVS", normal:"25-50 mg qid", mild:"q8h", mod:"q8-16h", severe:"q12-24h", note:"ขับทางไตบางส่วน", capd:"q24h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Methyldopa", group:"CVS", normal:"250-500 mg bid-tid", mild:"ปกติ q8h", mod:"q8-12h", severe:"q12-24h ลดขนาด — HD supplement", note:"Sedation เพิ่มใน CKD", capd:"q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Doxazosin", group:"CVS", normal:"4-8 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง hypotension", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Perindopril", group:"CVS", normal:"5-10 mg/day", mild:"ลดขนาด 2 mg/day (CrCl 30-60)", mod:"2 mg วันเว้นวัน", severe:"ห้ามใช้ — HD ไม่แนะนำ", note:"", capd:"ห้ามใช้", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Irbesartan", group:"CVS", normal:"150-300 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — HD ไม่ถูกขับออก", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Azilsartan", group:"CVS", normal:"40-80 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง / ข้อมูลจำกัด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Valsartan+Sacubitril (Entresto)", group:"CVS", normal:"24/26-97/103 mg bid", mild:"ปกติ", mod:"เริ่ม 24/26 mg bid (CrCl<30)", severe:"หลีกเลี่ยง (CrCl<30)", note:"", capd:"ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Nicardipine", group:"CVS", normal:"20-40 mg tid / 5-15 mg/hr IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง hypotension", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Nimodipine", group:"CVS", normal:"60 mg q4h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Verapamil", group:"CVS", normal:"80-120 mg tid", mild:"ปกติ", mod:"ลดขนาด 25-50%", severe:"ลดขนาด 50-75%", note:"Active metabolite สะสม", capd:"ลดขนาด 50-75%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Isosorbide dinitrate", group:"CVS", normal:"5-20 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Isosorbide mononitrate", group:"CVS", normal:"30-60 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Nitroglycerin IV", group:"CVS", normal:"5-200 mcg/min IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Dobutamine", group:"CVS", normal:"2.5-20 mcg/kg/min IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Dopamine", group:"CVS", normal:"2-20 mcg/kg/min IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Norepinephrine", group:"CVS", normal:"0.01-3 mcg/kg/min IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Ephedrine", group:"CVS", normal:"30 mg IV prn", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด 25-50%", note:"", capd:"ลดขนาด 50%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Adrenaline (Epinephrine)", group:"CVS", normal:"1 mg IV (CPR)", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ฉุกเฉิน ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Trimetazidine", group:"CVS", normal:"35 mg bid", mild:"ปกติ", mod:"ลดขนาด 50% (CrCl 30-60)", severe:"ลดขนาด 50%", note:"หลีกเลี่ยง (CrCl<30)", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Dabigatran", group:"CVS", normal:"110-150 mg bid", mild:"ปกติ (CrCl>50)", mod:"ระวัง — 75 mg bid (CrCl 15-30)", severe:"หลีกเลี่ยง (CrCl<15)", note:"ขับทางไต 80%", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Enoxaparin", group:"CVS", normal:"40-60 mg SC qd-bid", mild:"ปกติ", mod:"1 mg/kg q24h (therapeutic) | 20 mg qd (prophylaxis)", severe:"ลดขนาดมาก — monitor anti-Xa", note:"ขับทางไต — สะสมได้", capd:"monitor anti-Xa", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Heparin", group:"CVS", normal:"ตาม aPTT target", mild:"ปกติ — monitor aPTT", mod:"ปกติ — monitor aPTT", severe:"ปกติ — monitor aPTT", note:"ขับผ่าน RES ไม่ใช่ไต", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Streptokinase", group:"CVS", normal:"1.5 MU IV 60 min", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง bleeding", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Alteplase", group:"CVS", normal:"0.9 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง — monitor bleeding", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ticagrelor", group:"CVS", normal:"90 mg bid", mild:"ปกติ", mod:"ปกติ — ระวัง bleeding", severe:"ปกติ — ระวัง (eGFR<15 ข้อมูลจำกัด)", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Ezetimibe", group:"CVS", normal:"10 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Fenofibrate", group:"CVS", normal:"200 mg/day", mild:"ลดขนาด 67 mg/day (CrCl 30-60)", mod:"ลดขนาด 67 mg/day หรือหลีกเลี่ยง", severe:"หลีกเลี่ยง", note:"ขับทางไต 60% — ระวัง myopathy", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Gemfibrozil", group:"CVS", normal:"600 mg bid", mild:"ปกติ", mod:"ลดขนาด / ระวัง", severe:"หลีกเลี่ยง", note:"ระวัง rhabdomyolysis", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Terbutaline", group:"Resp", normal:"0.25 mg SC", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ipratropium+Fenoterol", group:"Resp", normal:"ตาม MDI/nebulizer", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Budesonide", group:"Resp", normal:"200-800 mcg/day inhaled", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Budesonide+Formoterol", group:"Resp", normal:"160/4.5 mcg bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง / ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Fluticasone", group:"Resp", normal:"100-500 mcg bid inhaled", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Salmeterol+Fluticasone", group:"Resp", normal:"25/250-50/500 mcg bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Bromhexine", group:"Resp", normal:"8 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Acetylcysteine oral", group:"Resp", normal:"600 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Codeine+Guaiphenesin", group:"Resp", normal:"1-2 cap q4-6h", mild:"ปกติ", mod:"ลดขนาด 25%", severe:"ลดขนาด 50%", note:"Active metabolite morphine-6-glucuronide สะสม", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Dextromethorphan", group:"Resp", normal:"15-30 mg q4-6h", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Pseudoephedrine", group:"Resp", normal:"60 mg q4-6h", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"ขับทางไต 55-75%", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Poractant alfa (Curosurf)", group:"Resp", normal:"100-200 mg/kg intratracheal", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ทารก — ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Hydroxyzine", group:"Resp", normal:"10-25 mg tid-qid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"Active metabolite สะสม", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Chlorpheniramine", group:"Resp", normal:"4 mg q4-6h", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด — interval เพิ่ม", note:"Active metabolite สะสม", capd:"ลดขนาด / หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Clonazepam", group:"CNS", normal:"0.5-2 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Dipotassium clorazepate", group:"CNS", normal:"5-10 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Lemborexant", group:"CNS", normal:"5-10 mg hs", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง / ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Chlorpromazine", group:"CNS", normal:"50-100 mg bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด 25-50%", note:"", capd:"ลดขนาด 50%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Haloperidol", group:"CNS", normal:"2-5 mg bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด 25-50%", note:"", capd:"ลดขนาด 50% — HD ไม่ถูกขับออก", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Aripiprazole", group:"CNS", normal:"10-30 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Paliperidone palmitate", group:"CNS", normal:"100 mg/month IM", mild:"ลดขนาด 75 mg (CrCl 50-79)", mod:"ลดขนาด 50 mg (CrCl 25-49)", severe:"หลีกเลี่ยง (CrCl<25)", note:"ขับทางไต 59%", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Quetiapine", group:"CNS", normal:"25-800 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Risperidone", group:"CNS", normal:"1-6 mg/day", mild:"เริ่ม 0.5 mg bid (CrCl<60)", mod:"เริ่ม 0.5 mg bid", severe:"เริ่ม 0.5 mg bid — HD 0.5 mg bid", note:"ขับทางไต 70%", capd:"เริ่ม 0.5 mg bid", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Perphenazine", group:"CNS", normal:"4-8 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"ลดขนาด / ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Thioridazine", group:"CNS", normal:"50-100 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Trifluoperazine", group:"CNS", normal:"2-5 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Carbamazepine", group:"CNS", normal:"200-400 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — monitor level", note:"ปกติ — monitor level", capd:"ปกติ — monitor level", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Lamotrigine", group:"CNS", normal:"50-200 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด maintenance", note:"ลดขนาด 50% — and after H/D", capd:"ลดขนาด 50%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Topiramate", group:"CNS", normal:"25-200 mg bid", mild:"ลดขนาด 50% (CrCl<70)", mod:"ลดขนาด 50%", severe:"ลดขนาด 50% — and after H/D", note:"ขับทางไต 70%", capd:"ลดขนาด 50%", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Midazolam", group:"CNS", normal:"1-5 mg IV", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง — ลดขนาด", note:"Active metabolite สะสมได้", capd:"ลดขนาด / ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Nortriptyline", group:"CNS", normal:"25-75 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Imipramine", group:"CNS", normal:"25-75 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Duloxetine", group:"CNS", normal:"30-60 mg/day", mild:"ปกติ", mod:"ลดขนาด ระวัง (CrCl<30)", severe:"หลีกเลี่ยง (CrCl<30)", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Agomelatine", group:"CNS", normal:"25 mg hs", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Vortioxetine", group:"CNS", normal:"10-20 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Trazodone", group:"CNS", normal:"50-150 mg/day", mild:"ปกติ", mod:"ปกติ — ระวัง", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Methylphenidate", group:"CNS", normal:"10-60 mg/day", mild:"ปกติ", mod:"ระวัง", severe:"ระวัง / หลีกเลี่ยง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Betahistine", group:"CNS", normal:"8-16 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Dimenhydrinate", group:"CNS", normal:"50 mg q4-6h", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ergotamine+Caffeine", group:"CNS", normal:"1-2 tab prn (max 6/day)", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง vasoconstriction", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"normal",severe:"avoid"} },
+  { name:"Pethidine", group:"CNS", normal:"50-100 mg q3-4h", mild:"ปกติ — ระวัง", mod:"ลดขนาด / หลีกเลี่ยง", severe:"หลีกเลี่ยง", note:"Normeperidine toxic — seizure", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Baclofen", group:"CNS", normal:"5-20 mg tid", mild:"เริ่ม 5 mg bid-tid", mod:"5 mg bid (CrCl<30)", severe:"5 mg/day หรือหลีกเลี่ยง", note:"ขับทางไต 70-80% สะสมมาก", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Donepezil", group:"CNS", normal:"5-10 mg hs", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Rivastigmine", group:"CNS", normal:"4.6 mg/24h patch", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง / ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Memantine", group:"CNS", normal:"5-20 mg/day", mild:"ปกติ (5-20 mg/day)", mod:"ปกติ (5-20 mg/day)", severe:"5-10 mg/day", note:"ขับทางไต 48%", capd:"5 mg/day — HD ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Levodopa+Benserazide", group:"CNS", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Levodopa+Carbidopa", group:"CNS", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Entacapone", group:"CNS", normal:"200 mg ทุกครั้งที่ให้ Levodopa", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Pramipexole ER", group:"CNS", normal:"0.375-4.5 mg/day", mild:"เริ่ม 0.375 mg qd (CrCl 30-50)", mod:"เริ่ม 0.375 mg qd (CrCl 15-30)", severe:"0.375 mg qd — HD ระวัง", note:"ขับทางไต >90%", capd:"ระวัง", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Ropinirole", group:"CNS", normal:"0.25-24 mg/day", mild:"ปกติ", mod:"ปกติ — ระวัง", severe:"ระวัง / ข้อมูลจำกัด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Piribedil", group:"CNS", normal:"50-150 mg/day", mild:"ปกติ", mod:"ปกติ — ระวัง", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Trihexyphenidyl", group:"CNS", normal:"2-5 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"ขับทางไต", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Methadone", group:"CNS", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ลดขนาด 50-75%", severe:"ลดขนาด 50-75% q36-48h", note:"", capd:"q36-48h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Protein-free peptide (Cerebrolysin)", group:"CNS", normal:"10-60 mL/day IV", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ampicillin", group:"Infect", normal:"500 mg-2 g q4-6h IV", mild:"q6-12h", mod:"q12h (CrCl 10-30)", severe:"q24h — and after H/D", note:"", capd:"q24h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Ampicillin+Sulbactam", group:"Infect", normal:"1.5-3 g q6h IV", mild:"q12h (CrCl 15-30)", mod:"q12-24h (CrCl 5-14)", severe:"q24h — and after H/D", note:"", capd:"q24h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Cloxacillin", group:"Infect", normal:"500 mg-2 g q6h IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ไม่ต้องปรับ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Dicloxacillin", group:"Infect", normal:"250-500 mg q6h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Penicillin V", group:"Infect", normal:"250-500 mg q6h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Penicillin G", group:"Infect", normal:"2-4 MU q4-6h IV", mild:"q4-6h", mod:"q6-8h (CrCl 10-30)", severe:"q8-12h — and after H/D", note:"", capd:"q12h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Benzathine penicillin", group:"Infect", normal:"1.2 MU IM", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง neurotoxicity", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Cefotaxime", group:"Infect", normal:"1-2 g q6-12h IV", mild:"q6-12h", mod:"q12-24h (CrCl<20)", severe:"q24h — and after H/D", note:"", capd:"q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Cefdinir", group:"Infect", normal:"300 mg bid / 600 mg qd", mild:"ปกติ", mod:"7 mg/kg q24h (CrCl<30)", severe:"7 mg/kg q24h — and after H/D 300 mg", note:"", capd:"7 mg/kg q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Cefixime", group:"Infect", normal:"200-400 mg/day", mild:"ปกติ", mod:"ลดขนาด 75% (CrCl 21-60)", severe:"ลดขนาด 50%", note:"", capd:"q24h 200 mg", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Erythromycin", group:"Infect", normal:"250-500 mg q6h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Roxithromycin", group:"Infect", normal:"150 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Azithromycin", group:"Infect", normal:"500 mg qd x3-5 วัน", mild:"ปกติ", mod:"ปกติ — ระวัง", severe:"ระวัง", note:"ขับทางน้ำดีเป็นหลัก", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Clarithromycin", group:"Infect", normal:"500 mg bid", mild:"ปกติ", mod:"ลดขนาด 50% (CrCl<30)", severe:"ลดขนาด 50% — and after H/D", note:"", capd:"ลดขนาด 50%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Clindamycin", group:"Infect", normal:"300-450 mg tid / 600-900 mg q8h IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ — HD ไม่ถูกขับออก", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Norfloxacin", group:"Infect", normal:"400 mg bid", mild:"ปกติ", mod:"400 mg q24h (CrCl<30)", severe:"400 mg q24h", note:"", capd:"400 mg q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Ofloxacin", group:"Infect", normal:"200-400 mg bid", mild:"ปกติ", mod:"100 mg q24h (CrCl<30)", severe:"100 mg q24h — and after H/D", note:"", capd:"100 mg q24h", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Sodium fusidate", group:"Infect", normal:"500 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — HD ไม่ถูกขับออก", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Amphotericin B", group:"Infect", normal:"0.5-1 mg/kg/day IV", mild:"ปกติ — monitor Cr", mod:"ปกติ — monitor Cr ใกล้ชิด", severe:"ระวัง nephrotoxicity — ลดขนาด", note:"Nephrotoxic อย่างมาก — prehydration", capd:"ระวัง", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Griseofulvin", group:"Infect", normal:"500 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Itraconazole", group:"Infect", normal:"100-400 mg/day", mild:"ปกติ", mod:"ระวัง (CrCl<30)", severe:"หลีกเลี่ยง สูตร oral solution", note:"Cyclodextrin carrier สะสมใน CKD", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Nystatin", group:"Infect", normal:"500,000 U qid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ไม่ดูดซึม", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Ganciclovir", group:"Infect", normal:"5 mg/kg q12h IV", mild:"5 mg/kg q12h (CrCl 50-69)", mod:"2.5 mg/kg q24h (CrCl 10-24)", severe:"1.25 mg/kg 3x/week and after H/D", note:"ขับทางไต 90%", capd:"1.25 mg/kg 3x/week", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Streptomycin", group:"Infect", normal:"15 mg/kg/day IM", mild:"q24-72h (CrCl 10-50)", mod:"q72-96h", severe:"q72-96h — monitor levels", note:"Nephrotoxic", capd:"q72-96h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Chloroquine", group:"Infect", normal:"250 mg/week (malaria prophylaxis)", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Primaquine", group:"Infect", normal:"15 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Quinine", group:"Infect", normal:"300-600 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง — monitor", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Albendazole", group:"Infect", normal:"400 mg bid x3-7 วัน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ivermectin", group:"Infect", normal:"200 mcg/kg dose once", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Dapsone", group:"Infect", normal:"100 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Prothionamide", group:"Infect", normal:"250-500 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด", note:"", capd:"ลดขนาด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Cycloserine", group:"Infect", normal:"250-500 mg bid", mild:"ปกติ", mod:"q24h (CrCl 10-50)", severe:"q24h", note:"Nephrotoxic — monitor level", capd:"q24h", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Gliclazide MR", group:"Endo", normal:"30-120 mg/day", mild:"ปกติ", mod:"ระวัง hypoglycemia", severe:"ระวัง / ลดขนาด", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Pioglitazone", group:"Endo", normal:"15-45 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง fluid retention", note:"Fluid retention — edema, HF", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Empagliflozin+Metformin", group:"Endo", normal:"ตาม component", mild:"ระวัง — ดู Metformin", mod:"หยุด Metformin component (eGFR<30)", severe:"ห้ามใช้", note:"", capd:"ห้ามใช้", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Methimazole", group:"Endo", normal:"5-30 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Propylthiouracil (PTU)", group:"Endo", normal:"50-300 mg/day", mild:"ปกติ", mod:"ลดขนาด 25%", severe:"ลดขนาด 50% — and after H/D", note:"", capd:"ลดขนาด 50%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Fludrocortisone", group:"Endo", normal:"0.1 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง Na/fluid retention", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Methylprednisolone", group:"Endo", normal:"ตามมาตรฐาน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — HD ไม่ถูกขับออก", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Triamcinolone acetonide inj", group:"Endo", normal:"10-40 mg intra-articular", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Hydrocortisone", group:"Endo", normal:"100-500 mg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Conjugated estrogens", group:"Endo", normal:"0.3-1.25 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง / ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Medroxyprogesterone", group:"Endo", normal:"2.5-10 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Hydroxyprogesterone caproate", group:"Endo", normal:"250 mg/week IM", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Micronized progesterone", group:"Endo", normal:"200 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Desmopressin", group:"Endo", normal:"0.1 mg bid-tid tab", mild:"ปกติ", mod:"ระวัง hyponatremia (CrCl<50)", severe:"ห้ามใช้ (CrCl<30)", note:"", capd:"ห้ามใช้", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Bromocriptine", group:"Endo", normal:"1.25-2.5 mg bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Calcitonin salmon", group:"Endo", normal:"100 IU SC/IM", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Zoledronic acid 4 mg", group:"Endo", normal:"4 mg IV q3-4 weeks", mild:"ลดขนาด 3.0-3.5 mg (CrCl 30-60)", mod:"ระวัง / ไม่แนะนำ (CrCl<30)", severe:"ห้ามใช้ (CrCl<30)", note:"Nephrotoxic", capd:"ห้ามใช้", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Alendronate", group:"Endo", normal:"70 mg/week", mild:"ปกติ", mod:"ระวัง (CrCl 30-35)", severe:"หลีกเลี่ยง (CrCl<35)", note:"ระวัง hypocalcemia", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"avoid",severe:"avoid"} },
+  { name:"Insulin glargine 300 U", group:"Endo", normal:"ตามมาตรฐาน", mild:"ปกติ — monitor", mod:"ลดขนาด — monitor", severe:"ลดขนาด — monitor ใกล้ชิด", note:"", capd:"ลดขนาด — monitor", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Dulaglutide", group:"Endo", normal:"0.75-1.5 mg/week SC", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง GI (CrCl<30)", note:"", capd:"ระวัง / ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Oxytocin", group:"OB-GYN", normal:"10 U IM / IV infusion", mild:"ปกติ", mod:"ปกติ — ระวัง fluid retention", severe:"ปกติ — ระวัง fluid retention และ hyponatremia", note:"", capd:"ระวัง fluid retention", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Methylergometrine", group:"OB-GYN", normal:"0.2 mg IM/IV", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง vasoconstriction", note:"", capd:"ระวัง / หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"normal",severe:"avoid"} },
+  { name:"Misoprostol", group:"OB-GYN", normal:"200-800 mcg", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Carbetocin", group:"OB-GYN", normal:"100 mcg IV ครั้งเดียว", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Nifedipine", group:"OB-GYN", normal:"10-20 mg q4-8h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Terbutaline (tocolysis)", group:"OB-GYN", normal:"0.25 mg SC", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Clotrimazole vaginal", group:"OB-GYN", normal:"100 mg qd x7 วัน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"External use", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Levonorgestrel+EE", group:"OB-GYN", normal:"1 tab qd", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Medroxyprogesterone 150 mg", group:"OB-GYN", normal:"150 mg IM q3 months", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Finasteride", group:"OB-GYN", normal:"5 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Alfuzosin", group:"OB-GYN", normal:"10 mg/day SR", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง / ลดขนาด (CrCl<30)", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Dutasteride", group:"OB-GYN", normal:"0.5 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Tamsulosin", group:"OB-GYN", normal:"0.4 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง (CrCl<10)", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Silodosin", group:"OB-GYN", normal:"4-8 mg/day", mild:"ปกติ", mod:"4 mg/day (CrCl 30-50)", severe:"หลีกเลี่ยง (CrCl<30)", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Oxybutynin", group:"OB-GYN", normal:"5 mg bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Mirabegron", group:"OB-GYN", normal:"25-50 mg/day", mild:"ปกติ", mod:"25 mg/day (eGFR 15-29)", severe:"25 mg/day (eGFR 15-29)", note:"หลีกเลี่ยง (eGFR<15)", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Cyclophosphamide", group:"Onco", normal:"ตาม regimen", mild:"ปกติ", mod:"ลดขนาด 25% (CrCl 10-25)", severe:"ลดขนาด 25-50% — and after H/D", note:"", capd:"ลดขนาด 25-50%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Doxorubicin", group:"Onco", normal:"ตาม regimen", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — HD ไม่ถูกขับออก (ขับทางน้ำดี)", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Capecitabine", group:"Onco", normal:"1000-1250 mg/m² bid", mild:"ปกติ", mod:"ลดขนาด 25% (CrCl 30-50)", severe:"หลีกเลี่ยง (CrCl<30)", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Fluorouracil (5-FU)", group:"Onco", normal:"ตาม regimen", mild:"ปกติ", mod:"ปกติ — monitor", severe:"ปกติ — monitor", note:"ตับเผาผลาญ — HD ไม่ถูกขับออก", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Oxaliplatin", group:"Onco", normal:"85-130 mg/m² IV", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด 25-50% (CrCl 30-50)", note:"หลีกเลี่ยง (CrCl<30)", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Gemcitabine", group:"Onco", normal:"ตาม regimen", mild:"ปกติ — monitor", mod:"ระวัง / ลดขนาด", severe:"ระวัง / หลีกเลี่ยง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Carboplatin", group:"Onco", normal:"Calvert: AUC×(GFR+25)", mild:"ปรับตาม Calvert formula", mod:"ปรับตาม Calvert formula", severe:"ปรับตาม Calvert — HD ไม่แนะนำ", note:"ขับทางไต 70%", capd:"ไม่แนะนำ", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Cisplatin", group:"Onco", normal:"50-100 mg/m² IV", mild:"ลดขนาด 50-75% (CrCl 30-60)", mod:"ลดขนาด 50% (CrCl 20-30)", severe:"หลีกเลี่ยง (CrCl<20)", note:"Highly nephrotoxic — hydration+Mannitol", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"caution",severe:"avoid"} },
+  { name:"Docetaxel", group:"Onco", normal:"75-100 mg/m² IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Paclitaxel", group:"Onco", normal:"135-175 mg/m² IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Irinotecan", group:"Onco", normal:"125-350 mg/m² IV", mild:"ปกติ", mod:"ปกติ — ระวัง", severe:"ระวัง / ข้อมูลจำกัด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Vinorelbine", group:"Onco", normal:"25-30 mg/m² IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ขับทางน้ำดี", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Eribulin", group:"Onco", normal:"1.4 mg/m² IV", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด (CrCl 30-49)", note:"ลดขนาด / ระวัง (CrCl<30)", capd:"ลดขนาด", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Leucovorin calcium", group:"Onco", normal:"15-300 mg", mild:"ปกติ", mod:"ปกติ — monitor", severe:"ปกติ — monitor", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Azathioprine", group:"Onco", normal:"1-3 mg/kg/day", mild:"ลดขนาด 50-75% (CrCl 10-50)", mod:"ลดขนาด 75%", severe:"ลดขนาดมาก / หลีกเลี่ยง", note:"Active metabolite สะสม", capd:"ลดขนาด", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Mycophenolate", group:"Onco", normal:"500-1500 mg bid", mild:"ปกติ", mod:"ปกติ (ไม่เกิน 1 g bid)", severe:"ระวัง / ลดขนาด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Cyclosporin", group:"Onco", normal:"ตาม indication", mild:"ปกติ — monitor Cr", mod:"ลดขนาด / monitor Cr ใกล้ชิด", severe:"ลดขนาด / ระวัง — HD ไม่ถูกขับออก", note:"Nephrotoxic", capd:"ปกติ (ไม่ถูกขับออก)", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Letrozole", group:"Onco", normal:"2.5 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Tamoxifen", group:"Onco", normal:"20-40 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Leuprorelin", group:"Onco", normal:"11.25 mg IM q3 months", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Trastuzumab", group:"Onco", normal:"ตาม regimen", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Filgrastim", group:"Onco", normal:"5 mcg/kg/day SC", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Deferiprone", group:"Onco", normal:"25 mg/kg tid", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง / ข้อมูลจำกัด", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Deferoxamine", group:"Onco", normal:"20-40 mg/kg/day SC", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด / ระวัง", note:"หลีกเลี่ยง — and after H/D", capd:"and after H/D", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Epoetin alfa", group:"Onco", normal:"50-300 U/kg 3x/week SC", mild:"ปกติ", mod:"ปกติ (indication หลัก)", severe:"ปกติ (indication หลัก)", note:"ปกติ — indication หลัก", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Folic acid", group:"Nutr", normal:"5 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"and after H/D", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ferrous fumarate", group:"Nutr", normal:"200 mg bid-tid", mild:"ปกติ", mod:"ระวัง GI toxicity / ลดขนาด", severe:"ระวัง / ลดขนาด", note:"GI toxicity เพิ่มใน CKD", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Iron sucrose", group:"Nutr", normal:"100-200 mg IV", mild:"ปกติ", mod:"ปกติ (indication หลัก)", severe:"ปกติ (indication หลัก)", note:"และ after H/D — IV หลังฟอก", capd:"IV and after H/D", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Ferric carboxymaltose", group:"Nutr", normal:"500-1000 mg IV", mild:"ปกติ", mod:"ปกติ (ESRD)", severe:"ปกติ (ESRD)", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Calcitriol", group:"Nutr", normal:"0.25-0.5 mcg/day", mild:"ปกติ", mod:"ปกติ (indication หลัก)", severe:"ปกติ (indication หลัก)", note:"ปกติ — HD ปกติ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Vitamin D2 (Ergocalciferol)", group:"Nutr", normal:"50000 U/week", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Vitamin B1 (Thiamine)", group:"Nutr", normal:"100 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"and after H/D", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Vitamin B6 (Pyridoxine)", group:"Nutr", normal:"50 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง neuropathy", note:"Neuropathy จากขนาดสูงใน CKD", capd:"and after H/D", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Vitamin B12", group:"Nutr", normal:"100-1000 mcg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"and after H/D", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Vitamin K1", group:"Nutr", normal:"1-10 mg IV/SC", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Albumin 20%", group:"Nutr", normal:"ตาม indication", mild:"ปกติ", mod:"ปกติ — monitor fluid balance", severe:"ปกติ — monitor ใกล้ชิด", note:"", capd:"ปกติ — monitor", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Sodium bicarbonate", group:"Nutr", normal:"325-650 mg tid", mild:"ปกติ (indication หลัก)", mod:"ปกติ (indication หลัก)", severe:"ปกติ (indication หลัก)", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Calcium gluconate 10%", group:"Nutr", normal:"10-20 mL IV", mild:"ปกติ — monitor Ca", mod:"ปกติ — monitor Ca", severe:"ปกติ — monitor Ca ใกล้ชิด", note:"", capd:"ปรับตาม Ca level", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Lanthanum carbonate", group:"Nutr", normal:"750-3000 mg/day (tid with meals)", mild:"ไม่ใช่ indication", mod:"ปกติ (phosphate binder เริ่มใช้)", severe:"ปกติ — indication หลัก", note:"ปกติ — indication หลัก", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Calcium polystyrene", group:"Nutr", normal:"15-60 g/day", mild:"ปกติ", mod:"ปกติ (Hyperkalemia)", severe:"ปกติ (Hyperkalemia)", note:"ปกติ — HD ปกติ", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Mannitol 20%", group:"Nutr", normal:"0.25-2 g/kg IV", mild:"ปกติ", mod:"ปกติ — monitor renal", severe:"ระวัง / จำกัดการใช้", note:"หลีกเลี่ยง — HD หลีกเลี่ยง", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Albumin 20% inj", group:"Nutr", normal:"ตาม indication", mild:"ปกติ — monitor", mod:"ปกติ — monitor fluid", severe:"ปกติ — monitor ใกล้ชิด", note:"", capd:"ปกติ — monitor", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Ketorolac", group:"MSK", normal:"30 mg IV/IM q6h", mild:"ลดขนาด 15-30 mg q6h (≤5 วัน)", mod:"หลีกเลี่ยง", severe:"หลีกเลี่ยง", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Mefenamic acid", group:"MSK", normal:"500 mg tid", mild:"ระวัง", mod:"หลีกเลี่ยง", severe:"หลีกเลี่ยง", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Indomethacin", group:"MSK", normal:"25 mg tid", mild:"ระวัง", mod:"ระวัง / หลีกเลี่ยง", severe:"หลีกเลี่ยง", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Hydroxychloroquine", group:"MSK", normal:"200-400 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Sulfasalazine (DMARDs)", group:"MSK", normal:"500-1000 mg bid", mild:"ปกติ", mod:"ลดขนาด ระวัง", severe:"หลีกเลี่ยง", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Leflunomide", group:"MSK", normal:"20 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"ระวัง / ข้อมูลจำกัด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Benzbromarone", group:"MSK", normal:"100 mg/day", mild:"ปกติ", mod:"ปกติ", severe:"หลีกเลี่ยง (CrCl<30)", note:"ไม่ได้ผลใน CrCl<30", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"avoid",severe:"avoid"} },
+  { name:"Pyridostigmine", group:"MSK", normal:"60 mg tid-qid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง / ลดขนาด", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Neostigmine", group:"MSK", normal:"0.5-2.5 mg IV/SC", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด (CrCl 10-50)", note:"ขับทางไต 50%", capd:"ลดขนาด / ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Tizanidine", group:"MSK", normal:"2-8 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"เริ่ม 2 mg/day (CrCl<25)", note:"", capd:"เริ่ม 2 mg/day", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Tolperisone", group:"MSK", normal:"50-150 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Orphenadrine", group:"MSK", normal:"100 mg bid SR", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Methylsalicylate cream", group:"MSK", normal:"ทาบริเวณปวด", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Parecoxib", group:"MSK", normal:"40 mg IV/IM bid", mild:"ปกติ", mod:"ปกติ — ระวัง Cr", severe:"ระวัง / ลดขนาด (CrCl 30-50)", note:"หลีกเลี่ยง (CrCl<30)", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Nimesulide gel", group:"MSK", normal:"ทา bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Risedronate", group:"MSK", normal:"150 mg/month", mild:"ปกติ", mod:"ระวัง (CrCl 30-35)", severe:"หลีกเลี่ยง (CrCl<30)", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Alendronate+Cholecalciferol", group:"MSK", normal:"70 mg+5600 IU/week", mild:"ปกติ", mod:"ระวัง (CrCl 30-35)", severe:"หลีกเลี่ยง (CrCl<35)", note:"", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Ossein hydroxyapatite", group:"MSK", normal:"2 tab bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Denosumab", group:"MSK", normal:"60 mg SC q6 months", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Teriparatide", group:"MSK", normal:"20 mcg SC qd", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ — ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Hyaluronic acid inj", group:"MSK", normal:"ตาม formulation", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Intra-articular", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Diacerein", group:"MSK", normal:"50 mg bid", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด 50%", note:"", capd:"ลดขนาด / หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Aescin", group:"MSK", normal:"20 mg tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Glucosamine+Chondroitin", group:"MSK", normal:"ตาม formulation", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Chloramphenicol eye oint", group:"Eye", normal:"ทาตา 3-4x/day", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Moxifloxacin eye drop", group:"Eye", normal:"1 gtt q2-4h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Gentamicin eye drop", group:"Eye", normal:"1-2 gtt q4h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Fusidic acid eye gel", group:"Eye", normal:"1 gtt bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Prednisolone eye susp", group:"Eye", normal:"1-2 gtt q1-6h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Fluorometholone eye susp", group:"Eye", normal:"1-2 gtt q2-4h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Dexamethasone+Neomycin eye drop", group:"Eye", normal:"1-2 gtt q4-6h", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Atropine 1% eye drop", group:"Eye", normal:"1 gtt qd-bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Latanoprost eye drop", group:"Eye", normal:"1 gtt hs", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Timolol 0.5% eye drop", group:"Eye", normal:"1 gtt bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง systemic (bradycardia)", note:"Topical — minimal systemic", capd:"ระวัง systemic", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Brimonidine eye drop", group:"Eye", normal:"1 gtt bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ระวัง systemic absorption", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Brinzolamide eye susp", group:"Eye", normal:"1 gtt bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ไม่แนะนำ (CrCl<30)", note:"CA inhibitor — Sulfa derivative", capd:"ไม่แนะนำ (CrCl<30)", capdSev:"avoid", severity:{mild:"normal",mod:"avoid",severe:"avoid"} },
+  { name:"Acetazolamide tab", group:"Eye", normal:"250-500 mg bid", mild:"ปกติ", mod:"ระวัง (CrCl 10-50)", severe:"หลีกเลี่ยง (CrCl<10)", note:"ขับทางไต 100% — acidosis", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"caution",mod:"avoid",severe:"avoid"} },
+  { name:"Pilocarpine 2% eye drop", group:"Eye", normal:"1-2 gtt tid-qid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Tetracaine eye drop", group:"Eye", normal:"1-2 gtt prn", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Hydroxypropyl methylcellulose eye drop", group:"Eye", normal:"1-2 gtt prn", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Ofloxacin ear drop", group:"ENT", normal:"3-4 gtt bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Chloramphenicol ear drop", group:"ENT", normal:"2-3 gtt tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Clotrimazole ear drop", group:"ENT", normal:"2-3 gtt bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Budesonide nasal spray", group:"ENT", normal:"64-256 mcg/day nasal", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Fluticasone furoate nasal spray", group:"ENT", normal:"27.5-110 mcg/day nasal", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Azelastine+Fluticasone nasal spray", group:"ENT", normal:"1 spray bid nasal", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Fusidic acid cream", group:"Skin", normal:"ทา bid-tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Mupirocin oint", group:"Skin", normal:"ทา tid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Clotrimazole cream", group:"Skin", normal:"ทา bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Betamethasone cream", group:"Skin", normal:"ทา bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ — ระวัง systemic", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Clobetasol cream", group:"Skin", normal:"ทา bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ระวัง systemic absorption", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Triamcinolone cream", group:"Skin", normal:"ทา bid", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Calcipotriol oint", group:"Skin", normal:"ทา bid", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง hypercalcemia", note:"", capd:"หลีกเลี่ยง / ระวัง hypercalcemia", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Benzyl benzoate emulsion", group:"Skin", normal:"ทาทั่วตัว", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Salicylic acid+Lactic acid", group:"Skin", normal:"ทาวันละ 1-2 ครั้ง", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Podophyllin 25% paint", group:"Skin", normal:"ทาทิ้งไว้ 4-6 ชม/week", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Acyclovir cream", group:"Skin", normal:"ทา 5x/day x5 วัน", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Topical", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Propofol", group:"Anaes", normal:"1-4 mg/kg IV induction", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ตับเผาผลาญ — HD ไม่ถูกขับออก", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Ketamine", group:"Anaes", normal:"1-2 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"Norketamine metabolite สะสม", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Etomidate", group:"Anaes", normal:"0.3 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Sevoflurane", group:"Anaes", normal:"inhalation", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง Compound A", note:"Compound A nephrotoxic potential", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Desflurane", group:"Anaes", normal:"inhalation", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Atracurium", group:"Anaes", normal:"0.3-0.6 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Hofmann elimination", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Cisatracurium", group:"Anaes", normal:"0.1-0.2 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Hofmann elimination", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Suxamethonium", group:"Anaes", normal:"1-1.5 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง hyperkalemia (K+ spike +0.5-1 mEq/L)", note:"ระวัง K+ spike ใน CKD", capd:"ระวัง hyperkalemia", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Bupivacaine", group:"Anaes", normal:"ตาม route/indication", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"Protein binding ลด → free drug เพิ่ม", capd:"ปกติ — ระวัง CNS toxicity", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Lidocaine", group:"Anaes", normal:"ตาม route/indication", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด 50%", note:"Active metabolite MEGX สะสม", capd:"ลดขนาด 50-75%", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Neostigmine", group:"Anaes", normal:"0.03-0.07 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ลดขนาด (CrCl 10-50)", note:"ขับทางไต 50%", capd:"ลดขนาด / ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"caution",severe:"caution"} },
+  { name:"Atropine (antidote)", group:"Antidote", normal:"2 mg IV q5-10 min", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ฉุกเฉิน", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Naloxone", group:"Antidote", normal:"0.4-2 mg IV/IM", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ฉุกเฉิน", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Pralidoxime (2-PAM)", group:"Antidote", normal:"1-2 g IV", mild:"ระวัง / ลดขนาด", mod:"ลดขนาด / ระวัง", severe:"ระวัง / ลดขนาดมาก", note:"ขับทางไต", capd:"ลดขนาด / ระวัง", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Protamine sulfate", group:"Antidote", normal:"1 mg/100 U heparin IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Activated charcoal", group:"Antidote", normal:"25-50 g", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Methylene blue", group:"Antidote", normal:"1-2 mg/kg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Dimercaprol (BAL)", group:"Antidote", normal:"3 mg/kg IM q4h", mild:"ปกติ", mod:"ปกติ", severe:"ระวัง / ลดขนาด", note:"Nephrotoxic", capd:"หลีกเลี่ยง", capdSev:"avoid", severity:{mild:"normal",mod:"caution",severe:"avoid"} },
+  { name:"Sodium nitrite", group:"Antidote", normal:"300 mg IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ฉุกเฉิน", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} },
+  { name:"Sodium thiosulfate", group:"Antidote", normal:"12.5 g IV", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ — ระวัง", note:"", capd:"ระวัง", capdSev:"caution", severity:{mild:"normal",mod:"normal",severe:"caution"} },
+  { name:"Iodinated contrast (Iopamidol/Iopromide)", group:"Contrast", normal:"ตาม imaging", mild:"hydration + พิจารณา NAC", mod:"ระวัง CIN + hydration + NAC", severe:"ระวังมาก CIN + benefit vs risk", note:"Contrast-induced nephropathy (CIN)", capd:"ฟอกทันทีหลัง procedure", capdSev:"caution", severity:{mild:"caution",mod:"caution",severe:"caution"} },
+  { name:"Barium sulfate oral", group:"Contrast", normal:"ตาม imaging", mild:"ปกติ", mod:"ปกติ", severe:"ปกติ", note:"ไม่ดูดซึม", capd:"ปกติ", capdSev:"normal", severity:{mild:"normal",mod:"normal",severe:"normal"} }
+];
+
+// =========================================================
+// RENAL CALCULATION
+// =========================================================
+function calcRenal(){
+  const age=parseFloat(document.getElementById('age').value);
+  const sex=document.getElementById('sex').value;
+  const wt=parseFloat(document.getElementById('weight').value);
+  const scr=parseFloat(document.getElementById('scr').value);
+  if(!age||!sex||!wt||!scr)return null;
+  let crcl=((140-age)*wt)/(72*scr);
+  if(sex==='female')crcl*=0.85;
+  let kappa=sex==='female'?0.7:0.9;
+  let alpha=sex==='female'?-0.241:-0.302;
+  let r=scr/kappa;
+  let egfr=142*Math.pow(Math.min(r,1),alpha)*Math.pow(Math.max(r,1),-1.2)*Math.pow(0.9938,age);
+  if(sex==='female')egfr*=1.012;
+  return{egfr:Math.round(egfr),crcl:Math.round(crcl)};
+}
+
+function getStage(e){
+  if(e>=90)return{l:'G1 — ปกติ',c:'#3fb950',bg:'rgba(63,185,80,.12)'};
+  if(e>=60)return{l:'G2 — บกพร่องเล็กน้อย',c:'#3fb950',bg:'rgba(63,185,80,.08)'};
+  if(e>=45)return{l:'G3a — บกพร่องน้อย-ปานกลาง',c:'#f0a500',bg:'rgba(240,165,0,.12)'};
+  if(e>=30)return{l:'G3b — บกพร่องปานกลาง-รุนแรง',c:'#f0a500',bg:'rgba(240,165,0,.12)'};
+  if(e>=15)return{l:'G4 — บกพร่องรุนแรง',c:'#e05252',bg:'rgba(224,82,82,.12)'};
+  return{l:'G5 — ไตวายระยะสุดท้าย',c:'#e05252',bg:'rgba(224,82,82,.18)'};
+}
+
+function getDose(drug,crcl){
+  if(crcl>50)return{t:drug.normal,lv:'norm'};
+  if(crcl>=30)return{t:drug.mild,lv:drug.severity.mild==='normal'?'norm':drug.severity.mild==='avoid'?'avd':'caut'};
+  if(crcl>=10)return{t:drug.mod,lv:drug.severity.mod==='normal'?'norm':drug.severity.mod==='avoid'?'avd':'caut'};
+  return{t:drug.severe,lv:drug.severity.severe==='normal'?'norm':drug.severity.severe==='avoid'?'avd':'caut'};
+}
+
+// =========================================================
+// LIVE UPDATE eGFR
+// =========================================================
+function updateEGFR(){
+  const res=calcRenal();
+  const ev=document.getElementById('ev');
+  const es=document.getElementById('es');
+  const cv=document.getElementById('cv');
+  const ef=document.getElementById('ef');
+  if(res){
+    const st=getStage(res.egfr);
+    ev.textContent=res.egfr; ev.style.color=st.c;
+    cv.textContent=res.crcl; cv.style.color=st.c;
+    es.textContent=st.l; es.style.color=st.c;
+    es.style.borderColor=st.c; es.style.background=st.bg;
+    ef.textContent='CKD-EPI 2021  |  CG: [(140−อายุ)×BW]÷[72×Cr]×0.85♀';
+    for(let i=1;i<=10;i++){
+      const inp=document.querySelector(`.dinput[data-r="${i}"]`);
+      if(inp&&inp.value.trim())setRow(i,inp.value.trim(),res.crcl);
+    }
+  } else {
+    [ev,cv].forEach(e=>{e.textContent='—';e.style.color='var(--t3)';});
+    es.textContent='—'; es.style.color='var(--t3)';
+    es.style.borderColor='var(--b2)'; es.style.background='';
+    ef.textContent='กรอกอายุ เพศ น้ำหนัก Creatinine เพื่อคำนวณ';
+  }
+}
+['age','sex','weight','scr'].forEach(id=>
+  document.getElementById(id).addEventListener('input',updateEGFR)
+);
+// Also re-render drug rows when weight changes (for mg/kg recalc)
+document.getElementById('weight').addEventListener('input', () => {
+  const res = calcRenal();
+  if(!res) return;
+  for(let i=1;i<=10;i++){
+    const inp=document.querySelector(`.dinput[data-r="${i}"]`);
+    if(inp&&inp.value.trim()) setRow(i,inp.value.trim(),res.crcl);
+  }
+});
+
+// =========================================================
+// BUILD 10 DRUG ROWS
+// =========================================================
+function buildRows(){
+  const tb=document.getElementById('drug-rows');
+  tb.innerHTML='';
+  for(let i=1;i<=10;i++){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="dnum">${i}</td>
+      <td>
+        <div class="ac-wrap">
+          <input class="dinput" type="text" placeholder="พิมพ์ชื่อยา..."
+            autocomplete="off" data-r="${i}"
+            oninput="onTyping(this)"
+            onfocus="onTyping(this)"
+            onblur="setTimeout(()=>closeAC(${i}),200)">
+          <div class="ac-list" id="ac${i}"></div>
+        </div>
+      </td>
+      <td><div class="dc dc-nil" id="d${i}">—</div></td>
+      <td><div class="dc dc-nil" id="p${i}">—</div></td>`;
+    tb.appendChild(tr);
+  }
+}
+
+// =========================================================
+// AUTOCOMPLETE
+// =========================================================
+function onTyping(inp){
+  const q=inp.value.toLowerCase().trim();
+  const r=inp.dataset.r;
+  const ac=document.getElementById('ac'+r);
+  if(!q){closeAC(r);clearRow(r);return;}
+  const hits=DRUGS.filter(d=>
+    d.name.toLowerCase().includes(q)||d.group.toLowerCase().includes(q)
+  ).slice(0,12);
+  if(!hits.length){ac.classList.remove('open');updateDisplay(r,inp.value.trim());return;}
+  ac.innerHTML=hits.map(d=>
+    `<div class="ac-item" onmousedown="pick(${r},'${d.name.replace(/'/g,"\\'")}')">${d.name}<span class="ac-grp">${d.group}</span></div>`
+  ).join('');
+  ac.classList.add('open');
+  updateDisplay(r,inp.value.trim());
+}
+function closeAC(r){const a=document.getElementById('ac'+r);if(a)a.classList.remove('open');}
+function pick(r,name){
+  document.querySelector(`.dinput[data-r="${r}"]`).value=name;
+  closeAC(r);
+  const res=calcRenal();
+  if(res)setRow(r,name,res.crcl);
+}
+
+function clearRow(r){
+  ['d','p'].forEach(p=>{
+    const c=document.getElementById(p+r);
+    c.className='dc dc-nil'; c.textContent='—';
+  });
+}
+
+function updateDisplay(r,name){
+  const res=calcRenal();
+  if(!res){
+    const dc=document.getElementById('d'+r);
+    const pc=document.getElementById('p'+r);
+    dc.className='dc dc-nil'; dc.textContent=name?'กรอกข้อมูลผู้ป่วยก่อน':'—';
+    pc.className='dc dc-nil'; pc.textContent=name?'กรอกข้อมูลผู้ป่วยก่อน':'—';
+    return;
+  }
+  setRow(r,name,res.crcl);
+}
+
+// =========================================================
+// mg/kg CALCULATOR
+// =========================================================
+function calcMgKg(text, bw){
+  if(!bw || isNaN(bw)) return text;
+  // Match patterns like 15-20 mg/kg, 25-30 mg/kg/dose, 7.5 mg/kg, 0.5 mg/kg etc
+  return text.replace(/([\d.]+)(?:-([\d.]+))?\s*mg\/kg(\/dose|\/day|\/hr)?/g, (match, lo, hi, suffix) => {
+    const sfx = suffix || '';
+    if(hi){
+      const loMg = Math.round(parseFloat(lo)*bw);
+      const hiMg = Math.round(parseFloat(hi)*bw);
+      return `${lo}-${hi} mg/kg${sfx} (= ${loMg}-${hiMg} mg${sfx})`;
+    } else {
+      const mg = Math.round(parseFloat(lo)*bw*10)/10;
+      return `${lo} mg/kg${sfx} (= ${mg} mg${sfx})`;
+    }
+  })
+  // Also handle mcg/kg
+  .replace(/([\d.]+)(?:-([\d.]+))?\s*mcg\/kg(\/min|\/hr|\/dose|\/day)?/g, (match, lo, hi, suffix) => {
+    const sfx = suffix || '';
+    if(hi){
+      const loMcg = Math.round(parseFloat(lo)*bw*10)/10;
+      const hiMcg = Math.round(parseFloat(hi)*bw*10)/10;
+      return `${lo}-${hi} mcg/kg${sfx} (= ${loMcg}-${hiMcg} mcg${sfx})`;
+    } else {
+      const mcg = Math.round(parseFloat(lo)*bw*10)/10;
+      return `${lo} mcg/kg${sfx} (= ${mcg} mcg${sfx})`;
+    }
+  })
+  // Handle U/kg
+  .replace(/([\d.]+)(?:-([\d.]+))?\s*U\/kg(\/dose|\/day)?/g, (match, lo, hi, suffix) => {
+    const sfx = suffix || '';
+    if(hi){
+      const loU = Math.round(parseFloat(lo)*bw);
+      const hiU = Math.round(parseFloat(hi)*bw);
+      return `${lo}-${hi} U/kg${sfx} (= ${loU}-${hiU} U${sfx})`;
+    } else {
+      const u = Math.round(parseFloat(lo)*bw);
+      return `${lo} U/kg${sfx} (= ${u} U${sfx})`;
+    }
+  });
+}
+
+function setRow(r,name,crcl){
+  const dc=document.getElementById('d'+r);
+  const pc=document.getElementById('p'+r);
+  const drug=DRUGS.find(d=>d.name.toLowerCase()===name.toLowerCase());
+  if(!drug){
+    dc.className='dc dc-nil'; dc.textContent='ไม่พบในฐานข้อมูล';
+    pc.className='dc dc-nil'; pc.textContent='—';
+    return;
+  }
+  // Main dose (severe/HD)
+  const dose=getDose(drug,crcl);
+  const cls={norm:'dc-norm',caut:'dc-caut',avd:'dc-avd'}[dose.lv]||'dc-caut';
+  const bw = parseFloat(document.getElementById('weight').value) || null;
+  const doseText = calcMgKg(dose.t, bw);
+  dc.className=`dc ${cls}`;
+  dc.innerHTML='';
+  dc.appendChild(document.createTextNode(doseText));
+  if(drug.name.includes('Vancomycin')){
+    const b=document.createElement('button');
+    b.className='ib';b.title='ดูรายละเอียด Trough';b.textContent='ⓘ';
+    b.onclick=e=>{e.stopPropagation();openMo('vmo');};
+    dc.appendChild(b);
+  }
+  // CAPD
+  if(drug.capd){
+    const cc={normal:'dc-norm',caution:'dc-caut',avoid:'dc-avd'}[drug.capdSev]||'dc-caut';
+    pc.className=`dc ${cc}`;
+    pc.textContent=calcMgKg(drug.capd, bw);
+  } else {
+    pc.className='dc dc-nil'; pc.textContent='ข้อมูลจำกัด';
+  }
+}
+
+// =========================================================
+// CALCULATE ALL
+// =========================================================
+function calcAll(){
+  const res=calcRenal();
+  if(!res){alert('กรุณากรอกข้อมูลผู้ป่วยให้ครบ (อายุ เพศ น้ำหนัก Creatinine)');return;}
+  const age=document.getElementById('age').value;
+  const sexTh=document.getElementById('sex').value==='male'?'ชาย':'หญิง';
+  const wt=document.getElementById('weight').value;
+  const scr=document.getElementById('scr').value;
+  const st=getStage(res.egfr);
+  document.getElementById('r-pt').textContent=
+    `วันที่ประเมิน: ${document.getElementById('pt-date').value||'—'}  |  `+
+    `ชื่อ-สกุล: ${document.getElementById('pt-name').value||'—'}  |  `+
+    `HN: ${document.getElementById('pt-hn').value||'—'}`;
+  document.getElementById('r-eg').textContent=
+    `อายุ ${age} ปี | ${sexTh} | BW ${wt} kg | Cr ${scr} mg/dL `+
+    `(เจาะ: ${document.getElementById('pt-scrdate').value||'—'}) | `+
+    `CrCl = ${res.crcl} ml/min | eGFR = ${res.egfr} ml/min/1.73m² (${st.l})`;
+  const tb=document.getElementById('res-tbody');
+  tb.innerHTML='';
+  let n=0;
+  for(let i=1;i<=10;i++){
+    const inp=document.querySelector(`.dinput[data-r="${i}"]`);
+    if(!inp||!inp.value.trim())continue;
+    const name=inp.value.trim();
+    const drug=DRUGS.find(d=>d.name.toLowerCase()===name.toLowerCase());
+    n++;
+    if(!drug){
+      tb.innerHTML+=`<tr>
+        <td style="color:var(--t3)">${n}</td>
+        <td class="dn">${name}</td>
+        <td colspan="4" style="color:var(--t2)">ไม่พบในฐานข้อมูล — ปรึกษาเภสัชกร</td>
+      </tr>`;continue;
+    }
+    const dose=getDose(drug,res.crcl);
+    const bm={norm:'b-ok',caut:'b-ca',avd:'b-av'}[dose.lv]||'b-ca';
+    const bt=dose.lv==='norm'?'✓ ปกติ':dose.lv==='avd'?'✕ หลีกเลี่ยง':'⚠ ปรับขนาด';
+    const ib=drug.name.includes('Vancomycin')
+      ?`<button class="ib" onclick="openMo('vmo')" title="Trough Level">ⓘ</button>`:'';
+    const capdHtml=drug.capd
+      ?`<span class="badge ${{normal:'b-ok',caution:'b-ca',avoid:'b-av'}[drug.capdSev]||'b-ca'}">${drug.capd}</span>`
+      :`<span style="color:var(--t3)">ข้อมูลจำกัด</span>`;
+    const bwR = parseFloat(document.getElementById('weight').value)||null;
+    const doseR = calcMgKg(dose.t, bwR);
+    const capdR = drug.capd ? calcMgKg(drug.capd, bwR) : null;
+    const capdHtmlR = capdR
+      ? `<span class="badge ${{normal:'b-ok',caution:'b-ca',avoid:'b-av'}[drug.capdSev]||'b-ca'}">${capdR}</span>`
+      : `<span style="color:var(--t3)">ข้อมูลจำกัด</span>`;
+    tb.innerHTML+=`<tr>
+      <td style="color:var(--t3)">${n}</td>
+      <td><div class="dn">${drug.name}</div><div style="font-size:10px;color:var(--t3)">${drug.group}</div></td>
+      <td><span class="badge ${bm}">${bt}</span></td>
+      <td>${doseR}${ib}</td>
+      <td>${capdHtmlR}</td>
+      <td><div class="nt">${drug.note||'—'}</div></td>
+    </tr>`;
+  }
+  if(!n){alert('กรุณากรอกรายการยาอย่างน้อย 1 รายการ');return;}
+  const panel=document.getElementById('res');
+  panel.classList.add('show');
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// =========================================================
+// MODAL
+// =========================================================
+function openMo(id){document.getElementById(id).classList.add('show');document.body.style.overflow='hidden';}
+function closeMo(){document.querySelectorAll('.mo').forEach(m=>m.classList.remove('show'));document.body.style.overflow='';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMo();});
+
+// =========================================================
+// INIT
+// =========================================================
+buildRows();
+document.getElementById('pt-date').value=new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
